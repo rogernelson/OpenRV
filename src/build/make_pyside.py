@@ -37,7 +37,7 @@ PYTHON_OUTPUT_DIR = ""
 OPENSSL_OUTPUT_DIR = ""
 
 LIBCLANG_URL = {
-    "Darwin": "https://download.qt.io/development_releases/prebuilt/libclang/libclang-release_80-based-mac.7z",
+    "Darwin": "https://download.qt.io/development_releases/prebuilt/libclang/libclang-release_140-based-macos-universal.7z",
     "Linux": "https://download.qt.io/development_releases/prebuilt/libclang/libclang-release_80-based-linux-Rhel7.2-gcc5.3-x86_64.7z",
     "Windows": "https://download.qt.io/development_releases/prebuilt/libclang/libclang-release_80-based-windows-vs2017_64.7z",
 }
