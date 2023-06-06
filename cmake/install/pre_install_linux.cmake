@@ -41,6 +41,7 @@ SET(STRIP_IGNORE_LIST
   "x-bytecode.python"
   "x-bzip2"
   "x-dosexec"
+  "x-font-ttf"
   "x-tar"
   "zip"
 )
