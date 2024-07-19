@@ -36,6 +36,11 @@ class SyncReviewMarshal(MinorMode):
                     "Turn the playack settings into a sync review payload",
                 ),
                 (
+                    "frame-changed",
+                    self.send_frame_changed,
+                    "Turn the playack settings into a sync review payload",
+                ),
+                (
                     "sync-review-change-received",
                     self.receive_change_event,
                     "",
@@ -252,13 +257,16 @@ class SyncReviewMarshal(MinorMode):
 
         print(f"Updating Graph using OTIO\n{new_otio}")
 
-        SyncReviewMarshal.sending_event = True
-        commands.clearSession()
 
-        if new_otio != "{}":
-            root_node = otio_reader.read_otio_string(new_otio)
-            commands.setViewNode(root_node)
-        SyncReviewMarshal.sending_event = False
+        SyncReviewMarshal.sending_event = True
+        try:
+            commands.clearSession()
+
+            if new_otio != "{}":
+                root_node = otio_reader.read_otio_string(new_otio)
+                commands.setViewNode(root_node)
+        finally:
+            SyncReviewMarshal.sending_event = False
 
     @staticmethod
     def receive_playback_change(command):
@@ -274,18 +282,38 @@ class SyncReviewMarshal(MinorMode):
             return
 
         SyncReviewMarshal.updating_playbacksettings = True
-        playing = payload.get("playing")
-        if playing is not None:
-            if playing:
-                commands.play()
-            else:
-                commands.stop()
-                current_time = payload.get("current_time")
-                if current_time:
-                    frame = current_time.get("value")
-                    if frame:
-                        commands.setFrame(frame)
-        SyncReviewMarshal.updating_playbacksettings = False
+        try:
+            playing = payload.get("playing")
+            if playing is not None:
+                if playing:
+                    commands.play()
+                else:
+                    commands.stop()
+                    current_time = payload.get("current_time")
+                    if current_time:
+                        frame = current_time.get("value")
+                        if frame:
+                            commands.setFrame(frame)
+        finally:
+            SyncReviewMarshal.updating_playbacksettings = False
+
+    @staticmethod
+    def send_frame_changed(event):
+        """
+        Sends a synced review message that frame has changed when
+        not playing
+        """
+        event.reject()
+
+        if commands.isPlaying():
+            return
+
+        if SyncReviewMarshal.updating_playbacksettings:
+            return
+
+        SyncReviewMarshal.marshal_playback_settings(
+            playing=commands.isPlaying(), current_time=SyncReviewMarshal.get_current_otio_time()
+        )    
 
     @staticmethod
     def send_clear_session(event):
