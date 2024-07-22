@@ -12,6 +12,7 @@ import otio_reader
 class SyncReviewMarshal(MinorMode):
     sending_event = False
     updating_playbacksettings = False
+    muted = False
     queue_name = ""
 
     def __init__(self):
@@ -89,7 +90,7 @@ class SyncReviewMarshal(MinorMode):
         """
         Sends an event with a json payload
         """
-        if SyncReviewMarshal.sending_event:
+        if SyncReviewMarshal.sending_event or SyncReviewMarshal.muted:
             return
 
         if os.environ.get("DEBUG_SYNC_REVIEW"):
@@ -331,6 +332,14 @@ class SyncReviewMarshal(MinorMode):
                 },
             },
         )
+
+    @staticmethod
+    def set_muted(value):
+        """
+        Send a sync review playback message to clear the session
+        """
+        event.reject()
+        SyncReviewMarshal.muted = value
 
 
 _mode = None
