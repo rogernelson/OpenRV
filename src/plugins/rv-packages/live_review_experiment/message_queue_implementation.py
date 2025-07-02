@@ -1,20 +1,18 @@
-from rv import qtutils
-from rv.commands import (
-    defineModeMenu,
-    NeutralMenuState,
-    DisabledMenuState,
-    theTime,
-    sendInternalEvent,
-)
-from rv.rvtypes import MinorMode
-
-from PySide2 import QtCore, QtWidgets
-
-import pika
-
 import os
 import platform
 import ssl
+
+import pika
+from PySide6 import QtCore, QtWidgets
+from rv import qtutils
+from rv.commands import (
+    DisabledMenuState,
+    NeutralMenuState,
+    defineModeMenu,
+    sendInternalEvent,
+    theTime,
+)
+from rv.rvtypes import MinorMode
 
 
 class MessageQueueImplementation(MinorMode, QtCore.QObject):
@@ -145,7 +143,6 @@ class MessageQueueImplementation(MinorMode, QtCore.QObject):
         if ok:
             self.mq_credentials = creds
             self.connect_mq()
-
 
     def create_review_session(self, session_name):
         self.mq_exchange = session_name
@@ -337,9 +334,7 @@ class MessageQueueImplementation(MinorMode, QtCore.QObject):
         print(f"Binding queue {queue_name} to exchange {self.mq_exchange}")
 
         self.mq_channel.queue_bind(
-            queue=queue_name,
-            exchange=self.mq_exchange,
-            routing_key="#"
+            queue=queue_name, exchange=self.mq_exchange, routing_key="#"
         )
 
         self.mq_queue = queue_name
