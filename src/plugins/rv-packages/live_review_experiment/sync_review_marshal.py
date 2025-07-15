@@ -534,13 +534,19 @@ class SyncReviewMarshal(MinorMode):
         frame = start_frame + duration - 1  # assuming same rate here
 
         source_node = commands.sourcesAtFrame(frame)[0]
+
+        # RV expects the frame id in the source node to be in source timing, so 
+        # convert global time to source time
+        source_data = commands.sourceMediaInfoList(source_node)[0]
+        source_frame = source_data["startFrame"] + duration - 1
+
         paint_node = extra_commands.associatedNode("RVPaint", source_node)
 
         paint_component = f"{paint_node}.paint"
         stroke_id = commands.getIntProperty(f"{paint_component}.nextId")[0]
 
         # No user id in payload, so just using "annotation" for now
-        pen_component = f"{paint_node}.pen:{stroke_id}:{frame}:annotation"
+        pen_component = f"{paint_node}.pen:{stroke_id}:{source_frame}:annotation"
 
         SyncReviewMarshal.received_strokes[uuid] = pen_component
 
@@ -586,7 +592,7 @@ class SyncReviewMarshal(MinorMode):
         if not commands.propertyExists(f"{pen_component}.startFrame"):
             commands.newProperty(f"{pen_component}.startFrame", commands.IntType, 1)
 
-        commands.setIntProperty(f"{pen_component}.startFrame", [int(start_frame)], True)
+        commands.setIntProperty(f"{pen_component}.startFrame", [source_frame], True)
 
         if not commands.propertyExists(f"{pen_component}.duration"):
             commands.newProperty(f"{pen_component}.duration", commands.IntType, 1)
