@@ -536,9 +536,9 @@ class SyncReviewMarshal(MinorMode):
         source_node = commands.sourcesAtFrame(frame)[0]
 
         # RV expects the frame id in the source node to be in source timing, so 
-        # convert global time to source time
+        # convert global time to source time, assuming global time starts at 1 here
         source_data = commands.sourceMediaInfoList(source_node)[0]
-        source_frame = source_data["startFrame"] + duration - 1
+        source_frame = source_data["startFrame"] + start_frame - 1
 
         paint_node = extra_commands.associatedNode("RVPaint", source_node)
 
