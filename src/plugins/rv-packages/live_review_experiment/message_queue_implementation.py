@@ -287,7 +287,7 @@ class MessageQueueImplementation(MinorMode, QtCore.QObject):
         self.mq_channel = self.mq_connection.channel()
 
         print("Specifying the QoS for the channel")
-        self.mq_channel.basic_qos(prefetch_count=1)
+        self.mq_channel.basic_qos(prefetch_count=0)
 
     def disconnect_mq(self):
         self.close_channel()
@@ -379,7 +379,7 @@ class MessageQueueImplementation(MinorMode, QtCore.QObject):
     def start_consuming_queue(self):
         self.stop_consuming_queue()
         print(f"Starting consuming from loop")
-        self.mq_timerEvent = self.startTimer(500)
+        self.mq_timerEvent = self.startTimer(20)
 
     def stop_consuming_queue(self):
         if self.mq_timerEvent:
