@@ -1,7 +1,8 @@
+import logging
 import os
 import platform
 import ssl
-import logging
+import sys
 
 import pika
 from PySide6 import QtCore, QtWidgets
@@ -14,8 +15,18 @@ from rv.commands import (
     theTime,
 )
 from rv.rvtypes import MinorMode
+
+sys.path.append(
+    os.path.join(
+        os.path.dirname(os.path.realpath(__file__)),
+        "..",
+        "SupportFiles",
+        "live_review_experiement",
+    )
+)
 from mq_consumer import MQReconnectingConsumer
 from mq_publisher import MQPublisher
+
 
 class MessageQueueImplementation(MinorMode, QtCore.QObject):
     def __init__(self):
@@ -39,7 +50,6 @@ class MessageQueueImplementation(MinorMode, QtCore.QObject):
             self.local_bindings,
             self.menu,
         )
-
 
     def timerEvent(self, event):
         self.process_next_message()
@@ -149,7 +159,6 @@ class MessageQueueImplementation(MinorMode, QtCore.QObject):
             self.mq_consumer = MQReconnectingConsumer(self, self.review_uuid, creds)
             self.mq_consumer.mq_message.connect(self.incoming_message)
             self.mq_publisher = MQPublisher(self, self.review_uuid, creds)
-            
 
     def incoming_message(self, body):
         sendInternalEvent("sync-review-change-received", body)
