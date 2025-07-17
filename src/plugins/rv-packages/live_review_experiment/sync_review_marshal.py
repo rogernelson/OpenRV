@@ -1,16 +1,13 @@
-from rv import commands, extra_commands
-from rv import rvtypes
-from rv.rvtypes import MinorMode
-
-from datetime import datetime, timezone
-
-import os
 import json
+import os
 import re
 import uuid
+from datetime import datetime, timezone
 
-import otio_writer
 import otio_reader
+import otio_writer
+from rv import commands, extra_commands, rvtypes
+from rv.rvtypes import MinorMode
 
 
 class SyncReviewMarshal(MinorMode):
@@ -23,7 +20,7 @@ class SyncReviewMarshal(MinorMode):
     pen_down = False
     received_strokes = {}
     point_width = None
-    point_coords = []
+    first_point = None
 
     def __init__(self):
         super(SyncReviewMarshal, self).__init__()
@@ -252,42 +249,40 @@ class SyncReviewMarshal(MinorMode):
         )
 
     @staticmethod
-    def send_paint_point(prop):
-        prop_base = ".".join(prop.split(".")[:-1])
+    def set_stroke_width(prop):
+        width_prop = commands.getFloatProperty(prop)
+        SyncReviewMarshal.point_width = width_prop[0]
 
-        width_prop = commands.getFloatProperty(f"{prop_base}.width")
-        if len(width_prop) > 0:
-            SyncReviewMarshal.point_width = width_prop[0]
-
-        point_prop = commands.getFloatProperty(f"{prop_base}.points")
-        if len(point_prop) > 0:
-            SyncReviewMarshal.point_coords = point_prop
+    @staticmethod
+    def set_stroke_point(prop):
+        points = commands.getFloatProperty(prop)
 
         # Wait until both width and point coordinates are set before sending the event
-        if (
-            len(SyncReviewMarshal.point_coords) == 0
-            or SyncReviewMarshal.point_width is None
-        ):
+        if SyncReviewMarshal.point_width is None:
+            SyncReviewMarshal.first_point = points
             return
 
+        if SyncReviewMarshal.first_point is not None:
+            SyncReviewMarshal.send_paint_point(SyncReviewMarshal.first_point)
+            SyncReviewMarshal.first_point = None
+
+        SyncReviewMarshal.send_paint_point(points)
+
+    @staticmethod
+    def send_paint_point(points):
         SyncReviewMarshal.marshal_paint_event(
             "PaintPoint",
             timestamp=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
             point_target={
                 # "source_index": 0, # not needed for now so not setting it
                 "uuid": str(SyncReviewMarshal.stroke_uuid),
-                "range": SyncReviewMarshal.get_current_otio_time_range(
-                    duration=commands.getIntProperty(f"{prop_base}.duration")
-                ),
+                "range": SyncReviewMarshal.get_current_otio_time_range(1),
             },
             point=SyncReviewMarshal.get_otio_point(
-                SyncReviewMarshal.point_coords[-2],
-                SyncReviewMarshal.point_coords[-1],
-                SyncReviewMarshal.point_width,
+                points[-2], points[-1], SyncReviewMarshal.point_width,
             ),
         )
-        SyncReviewMarshal.point_width = None
-        SyncReviewMarshal.point_coords = []
+
 
     @staticmethod
     def send_paint_end():
@@ -297,6 +292,7 @@ class SyncReviewMarshal(MinorMode):
             timestamp=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
             points=[],
         )
+        SyncReviewMarshal.point_width = None
 
     @staticmethod
     def extract_payload(message):
@@ -359,13 +355,13 @@ class SyncReviewMarshal(MinorMode):
                 SyncReviewMarshal.stroke_uuid = uuid.uuid4()
                 SyncReviewMarshal.pen_down = True
 
-            case prop if re.search(r".pen:\d+:\d+:.+points$", prop) or re.search(
-                r".pen:\d+:\d+:.+width$", prop
-            ):
+            case prop if re.search(r".pen:\d+:\d+:.+width$", prop):
+                SyncReviewMarshal.set_stroke_width(prop)
+            case prop if re.search(r".pen:\d+:\d+:.+points$", prop):
                 if SyncReviewMarshal.pen_down == True:
                     SyncReviewMarshal.pen_down = False
                     SyncReviewMarshal.send_paint_start(prop)
-                SyncReviewMarshal.send_paint_point(prop)
+                SyncReviewMarshal.set_stroke_point(prop)
 
     @staticmethod
     def check_paint_end(event):
@@ -648,13 +644,14 @@ class SyncReviewMarshal(MinorMode):
             commands.newProperty(f"{pen_component}.points", commands.FloatType, 2)
 
         commands.insertFloatProperty(
-            f"{pen_component}.points", [point["x"], point["y"]], True
+            f"{pen_component}.points", [point["x"], point["y"]]
         )
+
+        points = commands.getFloatProperty(f"{pen_component}.points")
 
         if not commands.propertyExists(f"{pen_component}.width"):
             commands.newProperty(f"{pen_component}.width", commands.FloatType, 1)
-
-        commands.insertFloatProperty(f"{pen_component}.width", [point["size"]], True)
+            commands.setFloatProperty(f"{pen_component}.width", [point["size"]], True)
 
     @staticmethod
     def receive_paint_end(payload):
