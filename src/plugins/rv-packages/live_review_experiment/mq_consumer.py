@@ -316,7 +316,7 @@ class MQConsumer(QtCore.QObject):
         """
         if (properties.app_id != self._listener_uuid):
             try:
-                self.message_signal.emit(json.loads(body.decode("utf-8")))
+                self.message_signal.emit(body.decode("utf-8"))
             except Exception as e:
                 self.console_output.emit(str(e))
                 import traceback

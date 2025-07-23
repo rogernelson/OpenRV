@@ -264,7 +264,7 @@ class MQPublisheImpl(QtCore.QObject):
 
         if self._connection:
             self._connection.ioloop.add_callback_threadsafe(
-                functools.partial(self.publish_message, message=message_data)
+                functools.partial(self.publish_message, message=json.loads(message_data))
                 )
 
     def publish_message(self, message):
@@ -389,4 +389,3 @@ class MQPublisher(QtCore.QThread):
     @property
     def connected(self):
         return self._is_connected
-
