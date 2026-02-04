@@ -377,6 +377,7 @@ namespace IPCore
         , m_wrapping(false)
         , m_fpsCalc(new FpsCalculator(72))
         , m_beingDeleted(false)
+        , m_beingCleared(false)
         , m_viewStackIndex(-1)
         , m_syncInterval(0)
         , m_syncMaxSamples(10)
@@ -1695,6 +1696,8 @@ namespace IPCore
 
     void Session::clear()
     {
+        m_beingCleared = true;
+
         if (!m_beingDeleted)
         {
             userGenericEvent("before-clear-session", "");
@@ -1760,6 +1763,8 @@ namespace IPCore
             // Restore caching mode
             setCaching(mode);
         }
+
+        m_beingCleared = false;
     }
 
     void Session::setRealtime(bool r)
