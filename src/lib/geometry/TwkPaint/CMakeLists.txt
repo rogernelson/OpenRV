@@ -16,7 +16,7 @@ SET(_twkpaint_src
 )
 
 SET(_sources
-    ${_twkpaint_src}/Path.cpp ${_twkpaint_src}/Smoother.cpp
+    ${_twkpaint_src}/Path.cpp ${_twkpaint_src}/Smoother.cpp ${_twkpaint_src}/StampPath.cpp
 )
 
 ADD_LIBRARY(
