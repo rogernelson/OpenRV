@@ -305,19 +305,57 @@ namespace IPCore
         p.startFrame = startFrame;
         p.duration = duration;
 
-        if (widthP && pointsP && widthP->size() == pointsP->size() && widthP->size() > 1)
-        {
-            p.widths.assign(static_cast<const float*>(widthP->rawData()), static_cast<const float*>(widthP->rawData()) + widthP->size());
-        }
+        // Per-point widths are consumed incrementally by the smoother below.
+        // We only do the bulk-assign here for strokes that arrive pre-built
+        // (e.g. replayed from OTIO), where inputSmoother will not have been
+        // initialised yet and rawPointsSmoothed == 0 means we process them all
+        // in one pass — that path sets p.widths itself, so this is a no-op for
+        // live drawing strokes.
+        const bool hasPerPointWidths = widthP && pointsP && widthP->size() == pointsP->size() && widthP->size() > 1;
 
         if (pointsP && pointsP->size())
         {
-            p.points.assign(static_cast<const Vec2f*>(pointsP->rawData()), static_cast<const Vec2f*>(pointsP->rawData()) + pointsP->size());
-            p.npoints = pointsP->size();
+            const auto* rawPts = static_cast<const Vec2f*>(pointsP->rawData());
+            const size_t rawCount = pointsP->size();
+
+            // Initialise the smoother on the first point of a new stroke.
+            if (!p.inputSmoother)
+            {
+                p.inputSmoother = std::make_unique<TwkPaint::SmoothInterpolate2D>();
+                p.rawPointsSmoothed = 0;
+                p.points.clear();
+                p.widths.clear();
+            }
+
+            // Feed only the newly arrived raw points through the smoother.
+            // widthP may have fewer entries than pointsP during a live stroke
+            // so guard the index access.
+            const size_t widthsCount = hasPerPointWidths ? widthP->size() : 0;
+
+            for (size_t i = p.rawPointsSmoothed; i < rawCount; ++i)
+            {
+                p.inputSmoother->add_point(rawPts[i]);
+
+                // Capture the width for this raw point (if available) so all
+                // smoothed output points generated from it get the same width.
+                const float w = (hasPerPointWidths && i < widthsCount) ? static_cast<const float*>(widthP->rawData())[i] : p.width;
+
+                TwkMath::Vec2f out;
+                while (p.inputSmoother->interpolate(out))
+                {
+                    p.points.push_back(out);
+                    if (hasPerPointWidths)
+                        p.widths.push_back(w);
+                }
+            }
+
+            p.rawPointsSmoothed = rawCount;
+            p.npoints = p.points.size();
         }
         else
         {
             p.points.clear();
+            p.widths.clear();
             p.npoints = 0;
         }
 
