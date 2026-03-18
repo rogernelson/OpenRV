@@ -7,7 +7,9 @@
 //
 #include <IPCore/PaintCommand.h>
 #include <IPBaseNodes/PaintIPNode.h>
+#include <TwkPaint/StampPath.h>
 #include <TwkMath/Function.h>
+#include <cmath>
 #include <TwkGLF/GL.h>
 #include <TwkGLF/GLPipeline.h>
 #include <TwkGLF/GLState.h>
@@ -218,22 +220,97 @@ namespace IPCore
             glActiveTexture(GL_TEXTURE0);
         }
 
-        void PolyLine::execute(CommandContext& context) const
+        // Return type for buildStampQuads.  verts owns the vertex data; primData
+        // holds a raw pointer into verts.data() — they must travel together.
+        // std::vector move preserves the heap allocation, so the pointer in primData
+        // remains valid after the struct is moved out of buildStampQuads via RVO/NRVO.
+        struct StampQuads
         {
-            if (!npoints)
-                return;
+            std::vector<float> verts;
+            PrimitiveData primData;
+            std::vector<VertexAttribute> attrs;
+        };
 
-            HashValue newid = hashValue();
-            if (!built || idhash != newid)
+        // Builds CPU-batched quad vertex data for GPU stamp rendering.
+        //
+        // VBO layout matches PolyLine::build(): texcoord block [all (u,v)]
+        // followed by position block [all (x,y)], tightly packed, no index buffer.
+        // Each stamp produces one GL_QUADS primitive (4 vertices) with UV in [0,1]
+        // and corners rotated by stamp.angle and scaled by stamp.radius / squish.
+        //
+        // NOTE: If OpenGL is ever upgraded beyond 2.1, this entire function can be
+        // replaced with a single VAO + glDrawArraysInstanced() call (requires GL 3.3).
+        // Instead of expanding each stamp to 4 explicit vertices here, upload one
+        // unit-square quad template plus a per-instance attribute buffer carrying
+        // (pos, radius, squish, angle) for each stamp, then call glDrawArraysInstanced.
+        // The CPU vertex expansion loop below would be eliminated entirely.
+        static StampQuads buildStampQuads(const std::vector<StampInstance>& stamps)
+        {
+            const size_t N = stamps.size();
+            const size_t Nv = 4 * N; // 4 vertices per quad
+
+            StampQuads result;
+
+            // [all UVs: u0 v0 u1 v1 ... | all positions: x0 y0 x1 y1 ...]
+            result.verts.resize(4 * Nv);
+
+            // UV block: BL=(0,0)  BR=(1,0)  TR=(1,1)  TL=(0,1)
+            static const float kUV[4][2] = {{0.f, 0.f}, {1.f, 0.f}, {1.f, 1.f}, {0.f, 1.f}};
+            for (size_t i = 0; i < N; ++i)
+                for (int v = 0; v < 4; ++v)
+                {
+                    result.verts[2 * (4 * i + v) + 0] = kUV[v][0];
+                    result.verts[2 * (4 * i + v) + 1] = kUV[v][1];
+                }
+
+            // Position block: local corners (half-extents: radius x, radius*squish y),
+            // rotated by stamp.angle degrees and translated to stamp.pos.
+            static const float kCX[4] = {-1.f, 1.f, 1.f, -1.f};
+            static const float kCY[4] = {-1.f, -1.f, 1.f, 1.f};
+            static constexpr float kPi = 3.14159265f;
+            const size_t posOff = 2 * Nv;
+            for (size_t i = 0; i < N; ++i)
             {
-                idhash = newid;
-                build();
+                const auto& s = stamps[i];
+                const float ca = std::cos(s.angle * (kPi / 180.f));
+                const float sa = std::sin(s.angle * (kPi / 180.f));
+                for (int v = 0; v < 4; ++v)
+                {
+                    const float lx = kCX[v] * s.radius;
+                    const float ly = kCY[v] * s.radius * s.squish;
+                    result.verts[posOff + 2 * (4 * i + v) + 0] = s.pos.x + lx * ca - ly * sa;
+                    result.verts[posOff + 2 * (4 * i + v) + 1] = s.pos.y + lx * sa + ly * ca;
+                }
             }
 
-            if (version < 3 && mode == OverMode)
-            {
-                executeOldOverMode(context);
+            result.primData = PrimitiveData(result.verts.data(), nullptr, GL_QUADS, Nv, N, result.verts.size() * sizeof(float));
+            result.attrs.push_back(VertexAttribute("in_TexCoord0", GL_FLOAT, 2, 0, 0));
+            result.attrs.push_back(VertexAttribute("in_Position", GL_FLOAT, 2, static_cast<int>(2 * Nv * sizeof(float)), 0));
+            return result;
+        }
+
+        void PolyLine::execute(CommandContext& context) const
+        {
+            const auto* localPoly = dynamic_cast<const PaintIPNode::LocalPolyLine*>(this);
+            const bool isStamp = localPoly && !localPoly->stampInstances.empty();
+
+            if (!npoints && !isStamp)
                 return;
+
+            if (!isStamp)
+            {
+                HashValue newid = hashValue();
+                if (!built || idhash != newid)
+                {
+                    idhash = newid;
+                    build();
+                }
+
+                if (version < 3 && mode == OverMode)
+                {
+                    executeOldOverMode(context);
+                    return;
+                }
             }
 
             const GLFBO* originalFBO = context.initialRender;
@@ -287,95 +364,125 @@ namespace IPCore
             //////////////////////////////////////////////////////////////////////////
             // render paint onto the background
             //////////////////////////////////////////////////////////////////////////
-            switch (mode)
-            {
-            case EraseMode:
-                if (brush != "gauss")
-                    glPipeline = glState->useGLProgram(paintEraseGLProgram());
-                else
-                    glPipeline = glState->useGLProgram(softPaintEraseGLProgram());
-                break;
-            case ScaleMode:
-            case GradientScaleMode:
-                if (brush != "gauss")
-                    glPipeline = glState->useGLProgram(paintScaleGLProgram());
-                else
-                    glPipeline = glState->useGLProgram(softPaintScaleGLProgram());
-                break;
-            case CloneMode:
-                if (brush != "gauss")
-                    glPipeline = glState->useGLProgram(paintCloneGLProgram());
-                else
-                    glPipeline = glState->useGLProgram(softPaintCloneGLProgram());
-                break;
-            case TessellateMode:
-                glPipeline = glState->useGLProgram(paintTessellateGLProgram());
-                break;
-            case OverMode:
-            default:
-                if (brush != "gauss")
-                    glPipeline = glState->useGLProgram(paintReplaceGLProgram());
-                else
-                    glPipeline = glState->useGLProgram(softPaintReplaceGLProgram());
-                break;
-            }
 
-            // set transforms
-            glPipeline->setProjection(context.projMatrix);
-            glPipeline->setModelview(context.modelviewMatrix);
-            glPipeline->setViewport(0, 0, w, h);
-
-            // bind textures
-            if (mode == EraseMode)
-            {
-                id = 1;
-                glPipeline->setUniformInt("texture0", 1, &id);
-                glActiveTexture(GL_TEXTURE0 + 1);
-                originalFBO->bindColorTexture(0);
-            }
-            else if (mode == ScaleMode || mode == CloneMode)
-            {
-                id = 1;
-                glPipeline->setUniformInt("texture0", 1, &id);
-                glActiveTexture(GL_TEXTURE0 + 1);
-                textureFBO->bindColorTexture(0);
-            }
-
-            // set uniforms
+            // determine effective stroke color (respects ghost mode)
             Color pcolor;
             const auto* localCommand = dynamic_cast<const PaintIPNode::LocalCommand*>(this);
             bool isGhostOn = (localCommand != nullptr) ? localCommand->ghostOn : false;
             pcolor = isGhostOn ? localCommand->ghostColor : color;
 
-            glPipeline->setUniformFloat("uniformColor", 4, &(pcolor[0]));
-            float coffset[2] = {50, 50};
-            if (mode == CloneMode)
-                glPipeline->setUniformFloat("cloneOffset", 2, coffset);
-            if (mode != OverMode)
+            if (isStamp)
             {
-                glPipeline->setUniformFloat("texWidth", 1, (float*)&w);
-                glPipeline->setUniformFloat("texHeight", 1, (float*)&h);
-            }
+                GLPipeline* stampPipeline =
+                    glState->useGLProgram((brush == "airbrush") ? softPaintReplaceGLProgram() : paintReplaceGLProgram());
+                stampPipeline->setProjection(context.projMatrix);
+                stampPipeline->setModelview(context.modelviewMatrix);
+                stampPipeline->setViewport(0, 0, w, h);
+                stampPipeline->setUniformFloat("uniformColor", 4, &(pcolor[0]));
 
-            // render
-            if (context.hasStencil)
+                if (context.hasStencil)
+                {
+                    glEnable(GL_SCISSOR_TEST);
+                    glScissor(context.stencilBox[0], context.stencilBox[1], context.stencilBox[2] - context.stencilBox[0],
+                              context.stencilBox[3] - context.stencilBox[1]);
+                }
+                glEnable(GL_BLEND);
+                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+                auto sq = buildStampQuads(localPoly->stampInstances);
+                RenderPrimitives rpStamp(glState->activeGLProgram(), sq.primData, sq.attrs, glState->vboList());
+                rpStamp.setupAndRender();
+
+                if (context.hasStencil)
+                    glDisable(GL_SCISSOR_TEST);
+            }
+            else
             {
-                glEnable(GL_SCISSOR_TEST);
-                glScissor(context.stencilBox[0], context.stencilBox[1], context.stencilBox[2] - context.stencilBox[0],
-                          context.stencilBox[3] - context.stencilBox[1]);
-            }
-            glEnable(GL_BLEND);
-            glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-            RenderPrimitives renderprimitives3(glState->activeGLProgram(), primitives, primitiveAttributes, glState->vboList());
-            renderprimitives3.setupAndRender();
-            if (context.hasStencil)
-                glDisable(GL_SCISSOR_TEST);
+                switch (mode)
+                {
+                case EraseMode:
+                    if (brush != "gauss")
+                        glPipeline = glState->useGLProgram(paintEraseGLProgram());
+                    else
+                        glPipeline = glState->useGLProgram(softPaintEraseGLProgram());
+                    break;
+                case ScaleMode:
+                case GradientScaleMode:
+                    if (brush != "gauss")
+                        glPipeline = glState->useGLProgram(paintScaleGLProgram());
+                    else
+                        glPipeline = glState->useGLProgram(softPaintScaleGLProgram());
+                    break;
+                case CloneMode:
+                    if (brush != "gauss")
+                        glPipeline = glState->useGLProgram(paintCloneGLProgram());
+                    else
+                        glPipeline = glState->useGLProgram(softPaintCloneGLProgram());
+                    break;
+                case TessellateMode:
+                    glPipeline = glState->useGLProgram(paintTessellateGLProgram());
+                    break;
+                case OverMode:
+                default:
+                    if (brush != "gauss")
+                        glPipeline = glState->useGLProgram(paintReplaceGLProgram());
+                    else
+                        glPipeline = glState->useGLProgram(softPaintReplaceGLProgram());
+                    break;
+                }
 
-            // clean up
-            if (mode == EraseMode)
-                originalFBO->unbindColorTexture();
-            else if (mode == ScaleMode || mode == CloneMode)
-                textureFBO->unbindColorTexture();
+                // set transforms
+                glPipeline->setProjection(context.projMatrix);
+                glPipeline->setModelview(context.modelviewMatrix);
+                glPipeline->setViewport(0, 0, w, h);
+
+                // bind textures
+                if (mode == EraseMode)
+                {
+                    id = 1;
+                    glPipeline->setUniformInt("texture0", 1, &id);
+                    glActiveTexture(GL_TEXTURE0 + 1);
+                    originalFBO->bindColorTexture(0);
+                }
+                else if (mode == ScaleMode || mode == CloneMode)
+                {
+                    id = 1;
+                    glPipeline->setUniformInt("texture0", 1, &id);
+                    glActiveTexture(GL_TEXTURE0 + 1);
+                    textureFBO->bindColorTexture(0);
+                }
+
+                // set uniforms
+                glPipeline->setUniformFloat("uniformColor", 4, &(pcolor[0]));
+                float coffset[2] = {50, 50};
+                if (mode == CloneMode)
+                    glPipeline->setUniformFloat("cloneOffset", 2, coffset);
+                if (mode != OverMode)
+                {
+                    glPipeline->setUniformFloat("texWidth", 1, (float*)&w);
+                    glPipeline->setUniformFloat("texHeight", 1, (float*)&h);
+                }
+
+                // render
+                if (context.hasStencil)
+                {
+                    glEnable(GL_SCISSOR_TEST);
+                    glScissor(context.stencilBox[0], context.stencilBox[1], context.stencilBox[2] - context.stencilBox[0],
+                              context.stencilBox[3] - context.stencilBox[1]);
+                }
+                glEnable(GL_BLEND);
+                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+                RenderPrimitives renderprimitives3(glState->activeGLProgram(), primitives, primitiveAttributes, glState->vboList());
+                renderprimitives3.setupAndRender();
+                if (context.hasStencil)
+                    glDisable(GL_SCISSOR_TEST);
+
+                // clean up textures (ribbon modes only)
+                if (mode == EraseMode)
+                    originalFBO->unbindColorTexture();
+                else if (mode == ScaleMode || mode == CloneMode)
+                    textureFBO->unbindColorTexture();
+            }
 
             glActiveTexture(GL_TEXTURE0 + 1);
             glBindTexture(GL_TEXTURE_2D, 0);
