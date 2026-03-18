@@ -91,10 +91,10 @@ namespace
                 continue;
             }
 
-            // Don't add polylines with 0 points
+            // Don't add polylines with 0 points (stamp strokes use stampInstances instead)
             if (auto* localPolyLine = dynamic_cast<PaintIPNode::LocalPolyLine*>(localCommand))
             {
-                if (localPolyLine != nullptr && localPolyLine->npoints <= 0)
+                if (localPolyLine != nullptr && localPolyLine->npoints <= 0 && localPolyLine->stampInstances.empty())
                 {
                     continue;
                 }
@@ -326,10 +326,9 @@ namespace IPCore
 
                 if (isStampBrush)
                 {
-                    TwkPaint::BrushParams params;
-                    params.radius = p.width * 0.5f;
-                    params.opacity = p.color[3];
-                    p.stampPlacer = std::make_unique<TwkPaint::StampPath>(params);
+                    // stampPlacer is created lazily on the first smoothed point
+                    // (below) because p.width may still be the default 0.01 here.
+                    p.stampPlacer = nullptr;
                     p.stampInstances.clear();
                 }
             }
@@ -350,6 +349,16 @@ namespace IPCore
                     if (isStampBrush)
                     {
                         // ── Stamp: drive placer, accumulate stamp instances ────
+                        // Create placer here (not at inputSmoother init) so p.width
+                        // is guaranteed to have the final per-stroke value.
+                        if (!p.stampPlacer)
+                        {
+                            TwkPaint::BrushParams params;
+                            params.radius = p.width * 0.5f;
+                            params.spacing = params.radius * 0.5f;
+                            params.opacity = p.color[3];
+                            p.stampPlacer = std::make_unique<TwkPaint::StampPath>(params);
+                        }
                         p.stampPlacer->add_point(out);
                         TwkPaint::StampInstance s;
                         while (p.stampPlacer->next(s))
@@ -366,7 +375,9 @@ namespace IPCore
             }
 
             p.rawPointsSmoothed = rawCount;
-            p.npoints = isStampBrush ? 0 : p.points.size();
+            // For stamp brushes, npoints mirrors stampInstances.size() so PolyLine::hash()
+            // changes as stamps accumulate, invalidating the IPGraph render cache mid-stroke.
+            p.npoints = isStampBrush ? p.stampInstances.size() : p.points.size();
         }
         else
         {

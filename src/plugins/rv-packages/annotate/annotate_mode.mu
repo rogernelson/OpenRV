@@ -104,6 +104,8 @@ class: AnnotateMinorMode : MinorMode
     DrawMode          _burnDrawMode;
     DrawMode          _cloneDrawMode;
     DrawMode          _smudgeDrawMode;
+    DrawMode          _markerDrawMode;
+    DrawMode          _airBrushStampDrawMode;
     string            _currentDrawObject;
     string            _drawModeTable;
     string            _disabledTooltipMessage;
@@ -2779,11 +2781,7 @@ class: AnnotateMinorMode : MinorMode
             print("ERROR: ui file exception: %s\n" % exc);
         }
 
-        //
-        //   XXX hide clone / smudge for now (no icons)
-        //
-        _cloneButton.hide();
-        _smudgeButton.hide();
+        // smudgeButton / cloneButton repurposed for stamp brush testing
 
         QGroupBox cbase    = _drawPane.findChild("colorGroup");
 
@@ -3001,56 +2999,56 @@ class: AnnotateMinorMode : MinorMode
                                         "annotate_burn_category",
                                         "Burn" };
 
-        _cloneDrawMode    = DrawMode { "Clone",
-                                        "clone",
-                                        _cloneButton,
-                                        g.addAction(auxIcon("clone_64x64.png"), "Clone"),
-                                        "",
-                                        Qt.CrossCursor,
-                                        0.025,
-                                        Color(0, 0, 0, .05),
-                                        RenderAddMode,
-                                        "circle",
-                                        RoundJoin,
-                                        SquareCap,
-                                        0.044, 0.001,
-                                        1,
-                                        1,
-                                        PressureMode.None,
-                                        nil,
-                                        nil,
-                                        nil,
-                                        nil,
-                                        "annotate_clone_category",
-                                        "Clone" };
+        _markerDrawMode = DrawMode { "Marker",
+                                      "marker",
+                                      _smudgeButton,
+                                      g.addAction(auxIcon("smudge_64x64.png"), "Marker"),
+                                      "",
+                                      Qt.CrossCursor,
+                                      0.015,
+                                      Color(1, 0, 0, 1),
+                                      RenderOverMode,
+                                      "marker",
+                                      RoundJoin,
+                                      SquareCap,
+                                      0.044, 0.001,
+                                      1,
+                                      1,
+                                      defaultPMode,
+                                      nil,
+                                      nil,
+                                      nil,
+                                      nil,
+                                      "annotate_marker_category",
+                                      "Marker (Stamp)" };
 
-        _smudgeDrawMode   = DrawMode { "Smudge",
-                                        "smudge",
-                                        _smudgeButton,
-                                        g.addAction(auxIcon("smudge_64x64.png"), "Smudge"),
-                                        "",
-                                        Qt.CrossCursor,
-                                        0.025,
-                                        Color(0, 0, 0, .05),
-                                        RenderAddMode,
-                                        "circle",
-                                        RoundJoin,
-                                        SquareCap,
-                                        0.044, 0.001,
-                                        1,
-                                        1,
-                                        PressureMode.None,
-                                        nil,
-                                        nil,
-                                        nil,
-                                        nil,
-                                        "annotate_smudge_category",
-                                        "Smudge" };
+        _airBrushStampDrawMode = DrawMode { "Airbrush Stamp",
+                                             "airbrushstamp",
+                                             _cloneButton,
+                                             g.addAction(auxIcon("clone_64x64.png"), "Airbrush Stamp"),
+                                             "",
+                                             Qt.CrossCursor,
+                                             0.025,
+                                             Color(0, 0.5, 1, 0.5),
+                                             RenderOverMode,
+                                             "airbrush",
+                                             RoundJoin,
+                                             SquareCap,
+                                             0.044, 0.001,
+                                             1,
+                                             1,
+                                             defaultPMode,
+                                             nil,
+                                             nil,
+                                             nil,
+                                             nil,
+                                             "annotate_airbrushstamp_category",
+                                             "Airbrush Stamp" };
 
         _drawModes = DrawMode[] { _selectDrawMode, _penDrawMode, _airBrushDrawMode,
                                   _textDrawMode, _dropperDrawMode, _hardEraseDrawMode,
                                   _softEraseDrawMode, _dodgeDrawMode, _burnDrawMode,
-                                  _cloneDrawMode, _smudgeDrawMode };
+                                  _markerDrawMode, _airBrushStampDrawMode };
 
         //
         //  Load the settings
