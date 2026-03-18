@@ -9,6 +9,7 @@
 #include <IPCore/PaintCommand.h>
 #include <TwkMath/Color.h>
 #include <TwkPaint/Smoother.h>
+#include <TwkPaint/StampPath.h>
 #include <map>
 #include <memory>
 #include <vector>
@@ -69,14 +70,23 @@ namespace IPCore
         public:
             LocalPolyLine() = default;
 
+            // ── Ribbon brush state ────────────────────────────────────────────
             // Physics-based input smoother — persistent across compilePenComponent()
             // calls so that velocity/acceleration state accumulates correctly during
             // live drawing. Reset to nullptr at the start of each new stroke.
             std::unique_ptr<TwkPaint::SmoothInterpolate2D> inputSmoother;
 
             // Number of raw input points already fed through the smoother.
-            // Used to feed only new points on each compilePenComponent() call.
             size_t rawPointsSmoothed{0};
+
+            // ── Stamp brush state ─────────────────────────────────────────────
+            // Stamp placer — persistent across compilePenComponent() calls so that
+            // arc-length state accumulates correctly during live drawing.
+            // nullptr for ribbon brushes.
+            std::unique_ptr<TwkPaint::StampPath> stampPlacer;
+
+            // Accumulated stamp placements for the current stroke.
+            std::vector<TwkPaint::StampInstance> stampInstances;
         };
 
         class LocalText

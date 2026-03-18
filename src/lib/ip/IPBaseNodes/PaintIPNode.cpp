@@ -305,12 +305,10 @@ namespace IPCore
         p.startFrame = startFrame;
         p.duration = duration;
 
-        // Per-point widths are consumed incrementally by the smoother below.
-        // We only do the bulk-assign here for strokes that arrive pre-built
-        // (e.g. replayed from OTIO), where inputSmoother will not have been
-        // initialised yet and rawPointsSmoothed == 0 means we process them all
-        // in one pass — that path sets p.widths itself, so this is a no-op for
-        // live drawing strokes.
+        // Classify the brush type once — drives all downstream data paths.
+        const bool isStampBrush = (brush == "marker" || brush == "airbrush");
+
+        // Per-point widths: only relevant for ribbon brushes but cheap to check.
         const bool hasPerPointWidths = widthP && pointsP && widthP->size() == pointsP->size() && widthP->size() > 1;
 
         if (pointsP && pointsP->size())
@@ -318,44 +316,63 @@ namespace IPCore
             const auto* rawPts = static_cast<const Vec2f*>(pointsP->rawData());
             const size_t rawCount = pointsP->size();
 
-            // Initialise the smoother on the first point of a new stroke.
+            // ── Initialise per-stroke state on the first point ────────────────
             if (!p.inputSmoother)
             {
                 p.inputSmoother = std::make_unique<TwkPaint::SmoothInterpolate2D>();
                 p.rawPointsSmoothed = 0;
                 p.points.clear();
                 p.widths.clear();
+
+                if (isStampBrush)
+                {
+                    TwkPaint::BrushParams params;
+                    params.radius = p.width * 0.5f;
+                    params.opacity = p.color[3];
+                    p.stampPlacer = std::make_unique<TwkPaint::StampPath>(params);
+                    p.stampInstances.clear();
+                }
             }
 
-            // Feed only the newly arrived raw points through the smoother.
-            // widthP may have fewer entries than pointsP during a live stroke
-            // so guard the index access.
+            // ── Feed only newly arrived raw points through the smoother ────────
+            // widthP may have fewer entries than pointsP during a live stroke.
             const size_t widthsCount = hasPerPointWidths ? widthP->size() : 0;
 
             for (size_t i = p.rawPointsSmoothed; i < rawCount; ++i)
             {
                 p.inputSmoother->add_point(rawPts[i]);
 
-                // Capture the width for this raw point (if available) so all
-                // smoothed output points generated from it get the same width.
                 const float w = (hasPerPointWidths && i < widthsCount) ? static_cast<const float*>(widthP->rawData())[i] : p.width;
 
                 TwkMath::Vec2f out;
                 while (p.inputSmoother->interpolate(out))
                 {
-                    p.points.push_back(out);
-                    if (hasPerPointWidths)
-                        p.widths.push_back(w);
+                    if (isStampBrush)
+                    {
+                        // ── Stamp: drive placer, accumulate stamp instances ────
+                        p.stampPlacer->add_point(out);
+                        TwkPaint::StampInstance s;
+                        while (p.stampPlacer->next(s))
+                            p.stampInstances.push_back(s);
+                    }
+                    else
+                    {
+                        // ── Ribbon: accumulate smoothed geometry points ────────
+                        p.points.push_back(out);
+                        if (hasPerPointWidths)
+                            p.widths.push_back(w);
+                    }
                 }
             }
 
             p.rawPointsSmoothed = rawCount;
-            p.npoints = p.points.size();
+            p.npoints = isStampBrush ? 0 : p.points.size();
         }
         else
         {
             p.points.clear();
             p.widths.clear();
+            p.stampInstances.clear();
             p.npoints = 0;
         }
 
