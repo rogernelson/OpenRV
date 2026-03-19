@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 #include <IPBaseNodes/PaintIPNode.h>
+#include <IPCore/BrushTextureManager.h>
 #include <IPCore/PaintCommand.h>
 #include <IPCore/SessionIPNode.h>
 #include <IPCore/Exception.h>
@@ -306,7 +307,7 @@ namespace IPCore
         p.duration = duration;
 
         // Classify the brush type once — drives all downstream data paths.
-        const bool isStampBrush = (brush == "marker" || brush == "airbrush");
+        const bool isStampBrush = (brush == "marker" || brush == "airbrush" || brush == "glow");
 
         // Per-point widths: only relevant for ribbon brushes but cheap to check.
         const bool hasPerPointWidths = widthP && pointsP && widthP->size() == pointsP->size() && widthP->size() > 1;
@@ -355,7 +356,6 @@ namespace IPCore
                         {
                             TwkPaint::BrushParams params;
                             params.radius = p.width * 0.5f;
-                            params.spacing = params.radius * 0.5f;
                             params.opacity = p.color[3];
                             p.stampPlacer = std::make_unique<TwkPaint::StampPath>(params);
                         }

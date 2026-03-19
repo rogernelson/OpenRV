@@ -56,6 +56,7 @@ SET(_shaders
     CheckerboardBGFrag
     ReplaceColoredVertex
     PaintColoredFrag
+    TextureReplaceFrag
 )
 
 FIND_PACKAGE(OpenGL REQUIRED)

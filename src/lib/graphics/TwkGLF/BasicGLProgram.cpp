@@ -37,6 +37,7 @@ extern const char* StereoScanlineFrag_glsl;
 extern const char* StereoCheckerFrag_glsl;
 extern const char* CrosshatchBGFrag_glsl;
 extern const char* CheckerboardBGFrag_glsl;
+extern const char* TextureReplaceFrag_glsl;
 
 namespace TwkGLF
 {
@@ -260,5 +261,7 @@ namespace TwkGLF
     const GLProgram* softDirectionPaintGLProgram() { return basicGLProgram(DirectionPaintVertex_glsl, SoftDirectionPaintFrag_glsl); }
 
     const GLProgram* paintTessellateGLProgram() { return basicGLProgram(ReplaceColoredVertex_glsl, PaintColoredFrag_glsl); }
+
+    const GLProgram* texturePaintReplaceGLProgram() { return basicGLProgram(ReplaceVertex_glsl, TextureReplaceFrag_glsl); }
 
 } // namespace TwkGLF

@@ -106,6 +106,7 @@ class: AnnotateMinorMode : MinorMode
     DrawMode          _smudgeDrawMode;
     DrawMode          _markerDrawMode;
     DrawMode          _airBrushStampDrawMode;
+    DrawMode          _glowDrawMode;
     string            _currentDrawObject;
     string            _drawModeTable;
     string            _disabledTooltipMessage;
@@ -138,6 +139,7 @@ class: AnnotateMinorMode : MinorMode
     QToolButton       _burnButton;
     QToolButton       _cloneButton;
     QToolButton       _smudgeButton;
+    QToolButton       _glowButton;
     QSlider           _sizeSlider;
     QSlider           _opacitySlider;
     QAction           _undoAct;
@@ -2768,6 +2770,7 @@ class: AnnotateMinorMode : MinorMode
             _burnButton        = _drawPane.findChild("burnButton");
             _cloneButton       = _drawPane.findChild("cloneButton");
             _smudgeButton      = _drawPane.findChild("smudgeButton");
+            _glowButton        = _drawPane.findChild("glowButton");
 
             _sizeSlider        = _drawPane.findChild("sizeSlider");
             _undoButton        = _drawPane.findChild("undoButton");
@@ -3045,10 +3048,33 @@ class: AnnotateMinorMode : MinorMode
                                              "annotate_airbrushstamp_category",
                                              "Airbrush Stamp" };
 
+        _glowDrawMode = DrawMode { "Glow",
+                                   "glow",
+                                   _glowButton,
+                                   g.addAction(auxIcon("dodge_64x64.png"), "Glow"),
+                                   "",
+                                   Qt.CrossCursor,
+                                   0.025,
+                                   Color(1, 0.6, 0, 0.7),
+                                   RenderOverMode,
+                                   "glow",
+                                   RoundJoin,
+                                   SquareCap,
+                                   0.044, 0.001,
+                                   1,
+                                   1,
+                                   defaultPMode,
+                                   nil,
+                                   nil,
+                                   nil,
+                                   nil,
+                                   "annotate_glow_category",
+                                   "Glow (Additive Stamp)" };
+
         _drawModes = DrawMode[] { _selectDrawMode, _penDrawMode, _airBrushDrawMode,
                                   _textDrawMode, _dropperDrawMode, _hardEraseDrawMode,
                                   _softEraseDrawMode, _dodgeDrawMode, _burnDrawMode,
-                                  _markerDrawMode, _airBrushStampDrawMode };
+                                  _markerDrawMode, _airBrushStampDrawMode, _glowDrawMode };
 
         //
         //  Load the settings

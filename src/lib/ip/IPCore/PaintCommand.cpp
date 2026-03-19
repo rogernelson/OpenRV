@@ -5,8 +5,10 @@
 //  SPDX-License-Identifier: Apache-2.0
 //
 //
+#include <IPCore/BrushTextureManager.h>
 #include <IPCore/PaintCommand.h>
 #include <IPBaseNodes/PaintIPNode.h>
+#include <TwkApp/Bundle.h>
 #include <TwkPaint/StampPath.h>
 #include <TwkMath/Function.h>
 #include <cmath>
@@ -373,12 +375,25 @@ namespace IPCore
 
             if (isStamp)
             {
-                GLPipeline* stampPipeline =
-                    glState->useGLProgram((brush == "airbrush") ? softPaintReplaceGLProgram() : paintReplaceGLProgram());
+                // Resolve brush properties at render time — the manager is
+                // guaranteed loaded by renderPaintCommands() before execute().
+                const BrushInfo info = BrushTextureManager::instance().get(brush);
+
+                const GLProgram* stampProg = info.textureId ? texturePaintReplaceGLProgram()
+                                                            : (info.softShader ? softPaintReplaceGLProgram() : paintReplaceGLProgram());
+                GLPipeline* stampPipeline = glState->useGLProgram(stampProg);
                 stampPipeline->setProjection(context.projMatrix);
                 stampPipeline->setModelview(context.modelviewMatrix);
                 stampPipeline->setViewport(0, 0, w, h);
                 stampPipeline->setUniformFloat("uniformColor", 4, &(pcolor[0]));
+
+                if (info.textureId)
+                {
+                    int tipUnit = 1;
+                    stampPipeline->setUniformInt("brushTip", 1, &tipUnit);
+                    glActiveTexture(GL_TEXTURE0 + 1);
+                    glBindTexture(GL_TEXTURE_2D, info.textureId);
+                }
 
                 if (context.hasStencil)
                 {
@@ -387,7 +402,10 @@ namespace IPCore
                               context.stencilBox[3] - context.stencilBox[1]);
                 }
                 glEnable(GL_BLEND);
-                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+                if (info.blendMode == BlendAdditive)
+                    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ONE);
+                else
+                    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
                 auto sq = buildStampQuads(localPoly->stampInstances);
                 RenderPrimitives rpStamp(glState->activeGLProgram(), sq.primData, sq.attrs, glState->vboList());
@@ -867,6 +885,15 @@ namespace IPCore
 
         size_t ExecuteAllBefore::getType() const { return Command::ExecuteAllBefore; }
 
+        static std::string brushCatalogueDir()
+        {
+            if (const char* env = std::getenv("RV_BRUSH_DIR"))
+                return env;
+            if (TwkApp::Bundle* b = TwkApp::Bundle::mainBundle())
+                return b->top() + "/assets/brushes";
+            return "";
+        }
+
         void renderPaintCommands(PaintContext& context)
         {
             //
@@ -875,6 +902,9 @@ namespace IPCore
 
             if (context.commands.empty())
                 return;
+
+            if (!BrushTextureManager::instance().isLoaded())
+                BrushTextureManager::instance().load(brushCatalogueDir());
 
             // fbo contains the render of the current image, only used by erase
             // strokes

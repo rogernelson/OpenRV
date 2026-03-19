@@ -167,6 +167,17 @@ namespace IPCore
                 TessellateMode // each triangle can have its own color
             };
 
+            // Blend mode for stamp brushes — resolved from the brush catalogue
+            // by BrushTextureManager and stored here so PaintCommand::execute()
+            // can set the correct glBlendFunc without inspecting the brush name.
+            enum StampBlendMode
+            {
+                BlendNormal,   ///< GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
+                BlendMarker,   ///< marker wetness approximation (same GL blend as Normal)
+                BlendAdditive, ///< glow: GL_SRC_ALPHA, GL_ONE
+                BlendEraser    ///< reserved; stamp erasure not yet implemented
+            };
+
             explicit PolyLine(const Vec2* vector2d = nullptr, size_t npoints = 0, float width = 0, Color color = Color(0.0),
                               bool ownPoints = false)
                 : npoints(npoints)
@@ -242,6 +253,11 @@ namespace IPCore
             Mode mode;
             int debug;
             bool ownPoints;
+
+            // Resolved from the brush catalogue at stroke-creation time.
+            StampBlendMode stampBlendMode{BlendNormal};
+            bool stampSoftShader{false};
+            unsigned int stampTexture{0}; ///< GL texture name; 0 = procedural
 
             mutable HashValue idhash;
 

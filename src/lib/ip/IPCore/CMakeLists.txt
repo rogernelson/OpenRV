@@ -28,6 +28,7 @@ SET(_target
 )
 
 SET(_sources
+    BrushTextureManager.cpp
     Session.cpp
     Exception.cpp
     IPNode.cpp
@@ -256,6 +257,8 @@ TARGET_LINK_LIBRARIES(
           Boost::filesystem
           ${CMAKE_DL_LIBS}
           IPBaseNodes
+          PNG::PNG
+          Qt::Core
 )
 
 IF(RV_TARGET_WINDOWS)
@@ -278,3 +281,22 @@ ELSE()
 ENDIF()
 
 RV_STAGE(TYPE "LIBRARY" TARGET ${_target})
+
+# Stage brush tip assets from the annotation-platform submodule so that BrushTextureManager can find them at Bundle::top()/assets/brushes at runtime. On macOS,
+# Bundle::top() returns RV.app/ (one level above Contents/), so the assets must land at RV.app/assets/brushes rather than RV.app/Contents/assets/brushes.
+SET(_brush_assets_src
+    ${CMAKE_CURRENT_SOURCE_DIR}/../annotation-platform/assets/brushes
+)
+IF(RV_TARGET_DARWIN)
+  SET(_brush_stage_dir
+      ${RV_STAGE_ROOT_DIR}/../assets/brushes
+  )
+ELSE()
+  SET(_brush_stage_dir
+      ${RV_STAGE_ROOT_DIR}/assets/brushes
+  )
+ENDIF()
+FILE(
+  COPY ${_brush_assets_src}/
+  DESTINATION ${_brush_stage_dir}
+)
