@@ -3,9 +3,12 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 //
-// Fragment shader for stamp brushes with a texture tip.
-// Samples a GL_LUMINANCE brush-tip texture; the luminance value becomes
-// the brush alpha so the tip shape is fully controlled by the PNG asset.
+// RV adaptation of twkpaint/shaders/stamp_frag.glsl
+// (compat_gl21.glsl macros expanded inline per RV shader convention).
+//
+// Samples a GL_LUMINANCE brush-tip texture; luminance drives alpha so the
+// tip shape is fully defined by the PNG asset. fwidth()-based smoothstep
+// provides sub-pixel AA at stamp edges (same technique as ReplaceFrag.glsl).
 //
 #if __VERSION__ >= 150
 #version 150
@@ -22,8 +25,8 @@ in vec2 TexCoord0;
 
 void main()
 {
-    // GL_LUMINANCE textures replicate the single channel into r, g, b.
-    float alpha    = texture2D(brushTip, TexCoord0).r;
-    FRAGCOLOR.rgb  = uniformColor.rgb;
-    FRAGCOLOR.a    = alpha * uniformColor.a;
+    float tip   = texture2D(brushTip, TexCoord0).r;
+    float fw    = max(fwidth(tip), 0.001);
+    float alpha = smoothstep(0.0, fw, tip);
+    FRAGCOLOR   = vec4(uniformColor.rgb, alpha * uniformColor.a);
 }
