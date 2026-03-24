@@ -309,8 +309,12 @@ namespace IPCore
         // Classify the brush type once — drives all downstream data paths.
         const bool isStampBrush = (brush == "marker" || brush == "airbrush" || brush == "glow");
 
-        // Per-point widths: only relevant for ribbon brushes but cheap to check.
-        const bool hasPerPointWidths = widthP && pointsP && widthP->size() == pointsP->size() && widthP->size() > 1;
+        // Per-point widths are present when widthP has one entry per point.
+        // Allow widthP to lag pointsP by one: the Mu layer inserts the point and
+        // width in the same compound state change, but the IPGraph may re-evaluate
+        // after the point insert before the width insert lands, leaving widthP
+        // exactly one entry short. Clamp the index when that happens.
+        const bool hasPerPointWidths = widthP && widthP->size() > 0 && pointsP && widthP->size() >= pointsP->size() - 1;
 
         if (pointsP && pointsP->size())
         {
@@ -342,7 +346,9 @@ namespace IPCore
             {
                 p.inputSmoother->add_point(rawPts[i]);
 
-                const float w = (hasPerPointWidths && i < widthsCount) ? static_cast<const float*>(widthP->rawData())[i] : p.width;
+                // When widthP lags by one, clamp to the last available entry.
+                const size_t wi = (hasPerPointWidths && widthsCount > 0) ? std::min(i, widthsCount - 1) : static_cast<size_t>(-1);
+                const float w = (wi != static_cast<size_t>(-1)) ? static_cast<const float*>(widthP->rawData())[wi] : p.width;
 
                 TwkMath::Vec2f out;
                 while (p.inputSmoother->interpolate(out))
@@ -359,7 +365,7 @@ namespace IPCore
                             params.opacity = p.color[3];
                             p.stampPlacer = std::make_unique<TwkPaint::StampPath>(params);
                         }
-                        p.stampPlacer->add_point(out);
+                        p.stampPlacer->add_point(out, w * 0.5f);
                         TwkPaint::StampInstance s;
                         while (p.stampPlacer->next(s))
                             p.stampInstances.push_back(s);
