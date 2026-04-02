@@ -116,13 +116,22 @@ namespace IPCore
             return s;
         }
 
-        void BrushTextureManager::load(const std::string& dir)
+        std::string BrushTextureManager::catalogueDir()
         {
-            if (m_loaded)
-                return;
-            m_loaded = true;
+            if (const char* env = std::getenv("RV_BRUSH_DIR"))
+                return env;
+            if (TwkApp::Bundle* b = TwkApp::Bundle::mainBundle())
+                return b->top() + "/assets/brushes";
+            return "";
+        }
 
-            const QString qdir = QString::fromStdString(dir);
+        void BrushTextureManager::parseCatalogue()
+        {
+            if (m_catalogueParsed)
+                return;
+            m_catalogueParsed = true;
+
+            const QString qdir = QString::fromStdString(catalogueDir());
             const QString catPath = qdir + "/catalogue.json";
 
             QFile f(catPath);
@@ -148,24 +157,38 @@ namespace IPCore
                 const QString blend = entry.value("blend").toString("normal");
                 const bool soft = entry.value("soft").toBool(false);
 
-                BrushInfo info;
+                BrushInfo& info = m_brushes[name];
                 info.blendMode = blendFromString(blend);
                 info.softShader = soft;
-
-                if (!tip.isEmpty())
-                {
-                    const std::string tipPath = (qdir + "/" + tip).toStdString();
-                    info.textureId = uploadGrayscalePng(tipPath);
-                    if (!info.textureId)
-                        std::cerr << "[BrushTextureManager] failed to load tip: " << tipPath << "\n";
-                }
-
-                m_brushes[name] = info;
+                info.isStamp = !tip.isEmpty();
+                info.tipFile = tip.toStdString();
             }
         }
 
-        BrushInfo BrushTextureManager::get(const std::string& name) const
+        void BrushTextureManager::load()
         {
+            if (m_texturesLoaded)
+                return;
+            m_texturesLoaded = true;
+
+            parseCatalogue();
+
+            const QString qdir = QString::fromStdString(catalogueDir());
+            for (auto& kv : m_brushes)
+            {
+                if (kv.second.isStamp && !kv.second.tipFile.empty() && !kv.second.textureId)
+                {
+                    const std::string tipPath = (qdir + "/" + QString::fromStdString(kv.second.tipFile)).toStdString();
+                    kv.second.textureId = uploadGrayscalePng(tipPath);
+                    if (!kv.second.textureId)
+                        std::cerr << "[BrushTextureManager] failed to load tip: " << tipPath << "\n";
+                }
+            }
+        }
+
+        BrushInfo BrushTextureManager::get(const std::string& name)
+        {
+            parseCatalogue();
             const auto it = m_brushes.find(name);
             return (it != m_brushes.end()) ? it->second : BrushInfo{};
         }
@@ -176,7 +199,8 @@ namespace IPCore
                 if (kv.second.textureId)
                     glDeleteTextures(1, &kv.second.textureId);
             m_brushes.clear();
-            m_loaded = false;
+            m_catalogueParsed = false;
+            m_texturesLoaded = false;
         }
 
     } // namespace Paint

@@ -307,7 +307,7 @@ namespace IPCore
         p.duration = duration;
 
         // Classify the brush type once — drives all downstream data paths.
-        const bool isStampBrush = (brush == "marker" || brush == "airbrush" || brush == "glow");
+        const bool isStampBrush = Paint::BrushTextureManager::instance().get(brush).isStamp;
 
         // Per-point widths are present when widthP has one entry per point.
         // Allow widthP to lag pointsP by one: the Mu layer inserts the point and

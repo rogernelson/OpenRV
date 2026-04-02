@@ -5,6 +5,7 @@
 //
 #pragma once
 #include <IPCore/PaintCommand.h>
+#include <atomic>
 #include <string>
 #include <unordered_map>
 
@@ -19,15 +20,17 @@ namespace IPCore
             unsigned int textureId = 0; ///< GL texture name; 0 = procedural
             PolyLine::StampBlendMode blendMode = PolyLine::BlendNormal;
             bool softShader = false; ///< use soft Gaussian shader
+            bool isStamp = false;    ///< true when the catalogue entry has a tip texture
+            std::string tipFile;     ///< tip PNG filename relative to catalogue dir (empty = procedural)
         };
 
         /// Singleton that loads the brush catalogue JSON and uploads tip textures to GL.
         ///
         /// Usage:
         ///   // On the GL thread, once per application lifetime:
-        ///   BrushTextureManager::instance().load(catalogueDir);
+        ///   BrushTextureManager::instance().load();
         ///
-        ///   // At stroke-creation time (any thread, after load()):
+        ///   // At stroke-creation time (any thread):
         ///   BrushInfo info = BrushTextureManager::instance().get(brushName);
         ///
         class BrushTextureManager
@@ -35,26 +38,38 @@ namespace IPCore
         public:
             static BrushTextureManager& instance();
 
-            /// Parse catalogue.json from @p dir and upload tip PNGs as GL textures.
+            /// Upload tip PNGs as GL textures for any catalogue entries that have them.
             /// Must be called on the active GL thread. Safe to call multiple times —
             /// only the first call has any effect.
-            void load(const std::string& dir);
+            /// Catalogue metadata (isStamp, blendMode, softShader) is parsed lazily
+            /// on the first call to get(), so this need not be called first.
+            void load();
 
             /// Return resolved info for @p name, or a default BrushInfo if not found.
-            BrushInfo get(const std::string& name) const;
+            /// Parses catalogue.json on the first call (any thread; no GL required).
+            BrushInfo get(const std::string& name);
 
             /// Release all GL textures. Call before GL context teardown.
             void clear();
 
-            bool isLoaded() const { return m_loaded; }
+            bool isLoaded() const { return m_texturesLoaded; }
+
+            /// Resolve the brush catalogue directory: RV_BRUSH_DIR env var, or the
+            /// assets/brushes directory inside the application bundle.
+            static std::string catalogueDir();
 
         private:
             BrushTextureManager() = default;
 
             ~BrushTextureManager() { clear(); }
 
+            /// Parse catalogue.json and populate m_brushes metadata (no GL).
+            /// Safe to call from any thread; idempotent after first call.
+            void parseCatalogue();
+
             std::unordered_map<std::string, BrushInfo> m_brushes;
-            bool m_loaded{false};
+            std::atomic<bool> m_catalogueParsed{false};
+            bool m_texturesLoaded{false};
         };
 
     } // namespace Paint

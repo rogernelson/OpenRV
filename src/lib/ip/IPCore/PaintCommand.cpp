@@ -8,7 +8,6 @@
 #include <IPCore/BrushTextureManager.h>
 #include <IPCore/PaintCommand.h>
 #include <IPBaseNodes/PaintIPNode.h>
-#include <TwkApp/Bundle.h>
 #include <TwkPaint/StampPath.h>
 #include <TwkMath/Function.h>
 #include <cmath>
@@ -929,15 +928,6 @@ namespace IPCore
 
         size_t ExecuteAllBefore::getType() const { return Command::ExecuteAllBefore; }
 
-        static std::string brushCatalogueDir()
-        {
-            if (const char* env = std::getenv("RV_BRUSH_DIR"))
-                return env;
-            if (TwkApp::Bundle* b = TwkApp::Bundle::mainBundle())
-                return b->top() + "/assets/brushes";
-            return "";
-        }
-
         void renderPaintCommands(PaintContext& context)
         {
             //
@@ -948,7 +938,7 @@ namespace IPCore
                 return;
 
             if (!BrushTextureManager::instance().isLoaded())
-                BrushTextureManager::instance().load(brushCatalogueDir());
+                BrushTextureManager::instance().load();
 
             // fbo contains the render of the current image, only used by erase
             // strokes
