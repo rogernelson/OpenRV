@@ -6,7 +6,7 @@
 	url = https://github.com/shotgunsoftware/openrv-pub.git
 [submodule "src/lib/geometry/twkpaint-src"]
 	path = src/lib/geometry/twkpaint-src
-	url = git@git.autodesk.com:nelsonr/twkpaint.git
+	url = ../../media-and-entertainment/twkpaint.git
 [submodule "src/lib/ip/annotation-platform"]
 	path = src/lib/ip/annotation-platform
-	url = git@git.autodesk.com:nelsonr/annotation-platform.git
+	url = ../../media-and-entertainment/annotation-platform.git

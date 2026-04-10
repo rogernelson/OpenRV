@@ -129,7 +129,11 @@ namespace IPCore
                 PopFrameBuffer,
                 Rectangle,
                 Quad,
-                ExecuteAllBefore
+                ExecuteAllBefore,
+                ShapeRectType,
+                ShapeEllipseType,
+                ShapeArrowType,
+                ShapeLineType
             };
 
             float offset;
@@ -392,6 +396,82 @@ namespace IPCore
 
             void execute(CommandContext& context) const override;
             void hash(std::ostream& ostream) const override;
+            [[nodiscard]] size_t getType() const override;
+        };
+
+        // ── Shape commands ───────────────────────────────────────────
+        // Rendered via bounding-box quad + SDF GLSL shaders loaded from
+        // annotation-platform deps/twkpaint/shaders/.
+
+        /// Axis-aligned rectangle (OTIO Rectangle.1).
+        class ShapeRect : public Command
+        {
+        public:
+            ShapeRect() = default;
+            ShapeRect(const ShapeRect&) = default;
+
+            Vec2 min{0.0f, 0.0f};
+            Vec2 max{0.1f, 0.1f};
+            Color innerColor{0.0f, 0.0f, 0.0f, 0.0f};
+            Color borderColor{1.0f, 1.0f, 1.0f, 1.0f};
+            float borderWidth{0.002f};
+
+            void execute(CommandContext& context) const override;
+            void hash(std::ostream& o) const override;
+            [[nodiscard]] size_t getType() const override;
+        };
+
+        /// Axis-aligned ellipse (OTIO Ellipse.1).
+        class ShapeEllipse : public Command
+        {
+        public:
+            ShapeEllipse() = default;
+            ShapeEllipse(const ShapeEllipse&) = default;
+
+            Vec2 min{0.0f, 0.0f};
+            Vec2 max{0.1f, 0.1f};
+            Color innerColor{0.0f, 0.0f, 0.0f, 0.0f};
+            Color borderColor{1.0f, 1.0f, 1.0f, 1.0f};
+            float borderWidth{0.002f};
+
+            void execute(CommandContext& context) const override;
+            void hash(std::ostream& o) const override;
+            [[nodiscard]] size_t getType() const override;
+        };
+
+        /// Arrow with filled shaft and arrowhead at endPos (OTIO Arrow.1).
+        class ShapeArrow : public Command
+        {
+        public:
+            ShapeArrow() = default;
+            ShapeArrow(const ShapeArrow&) = default;
+
+            Vec2 startPos{0.0f, 0.0f};
+            Vec2 endPos{0.1f, 0.0f};
+            Color innerColor{1.0f, 1.0f, 1.0f, 1.0f};
+            Color borderColor{1.0f, 1.0f, 1.0f, 1.0f};
+            float thickness{0.005f};
+            float borderWidth{0.001f};
+
+            void execute(CommandContext& context) const override;
+            void hash(std::ostream& o) const override;
+            [[nodiscard]] size_t getType() const override;
+        };
+
+        /// Straight line with no arrowhead (OTIO Line.1).
+        class ShapeLine : public Command
+        {
+        public:
+            ShapeLine() = default;
+            ShapeLine(const ShapeLine&) = default;
+
+            Vec2 startPos{0.0f, 0.0f};
+            Vec2 endPos{0.1f, 0.0f};
+            Color borderColor{1.0f, 1.0f, 1.0f, 1.0f};
+            float borderWidth{0.002f};
+
+            void execute(CommandContext& context) const override;
+            void hash(std::ostream& o) const override;
             [[nodiscard]] size_t getType() const override;
         };
 

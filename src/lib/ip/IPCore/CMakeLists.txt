@@ -196,6 +196,31 @@ SET(_shaders
 QUOTE_FILES(_cooked_shaders INPUT_LIST ${_shaders} SUFFIX "glsl")
 LIST(APPEND _sources ${_cooked_shaders})
 
+# Embed SDF shape shaders directly into the binary. quote_file uses ADD_CUSTOM_COMMAND so the generated .cpp is rebuilt automatically whenever a shader source
+# file changes. Shaders are sourced from the annotation-platform submodule's twkpaint dependency so we share the same SDF shaders as all app using the same
+# version of the annotation-platform
+SET(_sdf_shader_dir
+    "../annotation-platform/deps/twkpaint/shaders"
+)
+QUOTE_FILE(_sdf_compat INPUT_FILENAME ${_sdf_shader_dir}/compat_gl21.glsl CPP_SYMBOL shape_compat_gl21)
+QUOTE_FILE(_sdf_common INPUT_FILENAME ${_sdf_shader_dir}/shape_common.glsl CPP_SYMBOL shape_common)
+QUOTE_FILE(_sdf_quadvert INPUT_FILENAME ${_sdf_shader_dir}/shape_quad.vert CPP_SYMBOL shape_quad_vert)
+QUOTE_FILE(_sdf_arrow INPUT_FILENAME ${_sdf_shader_dir}/arrow.frag CPP_SYMBOL shape_arrow_frag)
+QUOTE_FILE(_sdf_ellipse INPUT_FILENAME ${_sdf_shader_dir}/ellipse.frag CPP_SYMBOL shape_ellipse_frag)
+QUOTE_FILE(_sdf_rect INPUT_FILENAME ${_sdf_shader_dir}/rectangle.frag CPP_SYMBOL shape_rectangle_frag)
+QUOTE_FILE(_sdf_line INPUT_FILENAME ${_sdf_shader_dir}/line.frag CPP_SYMBOL shape_line_frag)
+LIST(
+  APPEND
+  _sources
+  ${_sdf_compat}
+  ${_sdf_common}
+  ${_sdf_quadvert}
+  ${_sdf_arrow}
+  ${_sdf_ellipse}
+  ${_sdf_rect}
+  ${_sdf_line}
+)
+
 # Create CL Kernels
 SET(_cl_kernels
     Histogram48k Histogram32k Histogram16k

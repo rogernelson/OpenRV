@@ -20,7 +20,13 @@ extern const char* SoftOldReplaceFrag_glsl;
 extern const char* ReplaceColoredVertex_glsl;
 extern const char* ReplaceVertex_glsl;
 extern const char* ReplaceFrag_glsl;
-extern const char* SoftReplaceFrag_glsl;
+
+// Stamp brush shaders embedded from annotation-platform/deps/twkpaint/shaders/.
+// compat_gl21.glsl is prepended at program-build time
+extern const char* ap_compat_gl21;
+extern const char* ap_stamp_vert;
+extern const char* ap_stamp_frag;
+extern const char* ap_soft_stamp_frag;
 extern const char* EraseVertex_glsl;
 extern const char* EraseFrag_glsl;
 extern const char* SoftEraseFrag_glsl;
@@ -37,7 +43,6 @@ extern const char* StereoScanlineFrag_glsl;
 extern const char* StereoCheckerFrag_glsl;
 extern const char* CrosshatchBGFrag_glsl;
 extern const char* CheckerboardBGFrag_glsl;
-extern const char* TextureReplaceFrag_glsl;
 
 namespace TwkGLF
 {
@@ -242,7 +247,13 @@ namespace TwkGLF
 
     const GLProgram* paintReplaceGLProgram() { return basicGLProgram(ReplaceVertex_glsl, ReplaceFrag_glsl); }
 
-    const GLProgram* softPaintReplaceGLProgram() { return basicGLProgram(ReplaceVertex_glsl, SoftReplaceFrag_glsl); }
+    const GLProgram* softPaintReplaceGLProgram()
+    {
+        static const GLProgram* prog = nullptr;
+        if (!prog)
+            prog = BasicGLProgram::select(std::string(ap_compat_gl21) + ap_stamp_vert, std::string(ap_compat_gl21) + ap_soft_stamp_frag);
+        return prog;
+    }
 
     const GLProgram* paintEraseGLProgram() { return basicGLProgram(EraseVertex_glsl, EraseFrag_glsl); }
 
@@ -262,6 +273,12 @@ namespace TwkGLF
 
     const GLProgram* paintTessellateGLProgram() { return basicGLProgram(ReplaceColoredVertex_glsl, PaintColoredFrag_glsl); }
 
-    const GLProgram* texturePaintReplaceGLProgram() { return basicGLProgram(ReplaceVertex_glsl, TextureReplaceFrag_glsl); }
+    const GLProgram* texturePaintReplaceGLProgram()
+    {
+        static const GLProgram* prog = nullptr;
+        if (!prog)
+            prog = BasicGLProgram::select(std::string(ap_compat_gl21) + ap_stamp_vert, std::string(ap_compat_gl21) + ap_stamp_frag);
+        return prog;
+    }
 
 } // namespace TwkGLF

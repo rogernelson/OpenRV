@@ -514,6 +514,106 @@
           </property>
          </widget>
         </item>
+        <item row="7" column="1">
+         <widget class="QToolButton" name="rectButton">
+          <property name="minimumSize">
+           <size>
+            <width>32</width>
+            <height>32</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>Rect</string>
+          </property>
+          <property name="checkable">
+           <bool>true</bool>
+          </property>
+          <property name="autoExclusive">
+           <bool>true</bool>
+          </property>
+          <property name="toolButtonStyle">
+           <enum>Qt::ToolButtonTextOnly</enum>
+          </property>
+          <property name="tbstyle" stdset="0">
+           <string>palette</string>
+          </property>
+         </widget>
+        </item>
+        <item row="7" column="2">
+         <widget class="QToolButton" name="ellipseButton">
+          <property name="minimumSize">
+           <size>
+            <width>32</width>
+            <height>32</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>Ell</string>
+          </property>
+          <property name="checkable">
+           <bool>true</bool>
+          </property>
+          <property name="autoExclusive">
+           <bool>true</bool>
+          </property>
+          <property name="toolButtonStyle">
+           <enum>Qt::ToolButtonTextOnly</enum>
+          </property>
+          <property name="tbstyle" stdset="0">
+           <string>palette</string>
+          </property>
+         </widget>
+        </item>
+        <item row="8" column="1">
+         <widget class="QToolButton" name="arrowButton">
+          <property name="minimumSize">
+           <size>
+            <width>32</width>
+            <height>32</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>Arr</string>
+          </property>
+          <property name="checkable">
+           <bool>true</bool>
+          </property>
+          <property name="autoExclusive">
+           <bool>true</bool>
+          </property>
+          <property name="toolButtonStyle">
+           <enum>Qt::ToolButtonTextOnly</enum>
+          </property>
+          <property name="tbstyle" stdset="0">
+           <string>palette</string>
+          </property>
+         </widget>
+        </item>
+        <item row="8" column="2">
+         <widget class="QToolButton" name="lineButton">
+          <property name="minimumSize">
+           <size>
+            <width>32</width>
+            <height>32</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>Line</string>
+          </property>
+          <property name="checkable">
+           <bool>true</bool>
+          </property>
+          <property name="autoExclusive">
+           <bool>true</bool>
+          </property>
+          <property name="toolButtonStyle">
+           <enum>Qt::ToolButtonTextOnly</enum>
+          </property>
+          <property name="tbstyle" stdset="0">
+           <string>palette</string>
+          </property>
+         </widget>
+        </item>
        </layout>
       </item>
       <item>
