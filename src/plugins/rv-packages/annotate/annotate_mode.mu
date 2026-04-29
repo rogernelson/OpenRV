@@ -1016,7 +1016,9 @@ class: AnnotateMinorMode : MinorMode
             setText(_textBuffer);
         }
 
+        let wasPlacing = _textPlacementMode;
         _textPlacementMode = false;
+        if (wasPlacing) sendInternalEvent("annotate-text-committed");
     }
 
     method: commitText (void; bool reject, Event event)
@@ -3709,7 +3711,8 @@ class: AnnotateMinorMode : MinorMode
                           ("key-down--meta--a", killLine, ""),
                           ("key-down--alt--a", killLine, ""),
                           ("key-down--space", insertChar, ""),
-                          ("key-down--enter", insertNL, ""),
+                          ("key-down--enter", commitText(false,), "Commit Text"),
+                          ("key-down--shift--enter", insertNL, "Insert Newline"),
                           ("key-down--control--enter", commitText(false,), ""),
                           ("key-down--meta--enter", commitText(false,), ""),
                           ("key-down--alt--enter", commitText(false,), ""),
