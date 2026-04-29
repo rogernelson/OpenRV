@@ -1238,6 +1238,9 @@ namespace IPCore
             const float cx = center.x;
             const float cy = center.y;
 
+            // RV renders directly to screen-resolution pixels, so DPR is 1.
+            float dpr = 1.0f;
+
             executeShapeQuad(prog, context, verts,
                              [&](TwkGLF::GLPipeline* p, GLuint /*pid*/)
                              {
@@ -1249,6 +1252,7 @@ namespace IPCore
                                  p->setUniformFloat("uInnerColor", 4, const_cast<float*>(inner));
                                  p->setUniformFloat("uBorderColor", 4, const_cast<float*>(border));
                                  p->setUniformFloat("uBorderWidth", 1, const_cast<float*>(&bw));
+                                 p->setUniformFloat("uDpr", 1, &dpr);
                              });
         }
 
@@ -1279,6 +1283,9 @@ namespace IPCore
             const float cx = center.x;
             const float cy = center.y;
 
+            // RV renders directly to screen-resolution pixels, so DPR is 1.
+            float dpr = 1.0f;
+
             executeShapeQuad(prog, context, verts,
                              [&](TwkGLF::GLPipeline* p, GLuint /*pid*/)
                              {
@@ -1289,6 +1296,7 @@ namespace IPCore
                                  p->setUniformFloat("uInnerColor", 4, const_cast<float*>(inner));
                                  p->setUniformFloat("uBorderColor", 4, const_cast<float*>(border));
                                  p->setUniformFloat("uBorderWidth", 1, const_cast<float*>(&bw));
+                                 p->setUniformFloat("uDpr", 1, &dpr);
                              });
         }
 
@@ -1323,6 +1331,9 @@ namespace IPCore
             const float start[2] = {startPos.x, startPos.y};
             const float end[2] = {endPos.x, endPos.y};
 
+            // RV renders directly to screen-resolution pixels, so DPR is 1.
+            float dpr = 1.0f;
+
             executeShapeQuad(prog, context, verts,
                              [&](TwkGLF::GLPipeline* p, GLuint /*pid*/)
                              {
@@ -1332,6 +1343,7 @@ namespace IPCore
                                  p->setUniformFloat("uInnerColor", 4, const_cast<float*>(inner));
                                  p->setUniformFloat("uBorderColor", 4, const_cast<float*>(border));
                                  p->setUniformFloat("uBorderWidth", 1, const_cast<float*>(&bw));
+                                 p->setUniformFloat("uDpr", 1, &dpr);
                              });
         }
 
@@ -1364,6 +1376,9 @@ namespace IPCore
             const float start[2] = {startPos.x, startPos.y};
             const float end[2] = {endPos.x, endPos.y};
 
+            // RV renders directly to screen-resolution pixels, so DPR is 1.
+            float dpr = 1.0f;
+
             executeShapeQuad(prog, context, verts,
                              [&](TwkGLF::GLPipeline* p, GLuint /*pid*/)
                              {
@@ -1371,6 +1386,7 @@ namespace IPCore
                                  p->setUniformFloat("uEnd", 2, const_cast<float*>(end));
                                  p->setUniformFloat("uBorderColor", 4, const_cast<float*>(border));
                                  p->setUniformFloat("uBorderWidth", 1, const_cast<float*>(&bw));
+                                 p->setUniformFloat("uDpr", 1, &dpr);
                              });
         }
 
