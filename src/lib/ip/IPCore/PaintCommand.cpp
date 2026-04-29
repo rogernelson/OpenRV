@@ -857,12 +857,20 @@ namespace IPCore
                 if (qtext.isEmpty())
                     return;
                 QFontMetricsF fm(qfont);
-                // horizontalAdvance gives the full advance width (including inter-glyph
-                // spacing) so the last word is never clipped. boundingRect() returns tight
-                // ink bounds which can be narrower, causing word-wrap to push the last
-                // word to a clipped second line.
-                const int imgW = static_cast<int>(std::ceil(fm.horizontalAdvance(qtext))) + 4;
-                const int imgH = static_cast<int>(std::ceil(fm.height())) + 4;
+                // For multi-line text, measure each line separately: take the
+                // max advance width and accumulate lineSpacing() per line so
+                // the image is tall enough for all lines.
+                const auto lines = qtext.split('\n');
+                float maxLineWidth = 0.0f;
+                for (const auto& line : lines)
+                {
+                    const float lw = line.isEmpty() ? 0.0f : static_cast<float>(fm.horizontalAdvance(line));
+                    if (lw > maxLineWidth)
+                        maxLineWidth = lw;
+                }
+                const int lineCount = std::max(1, static_cast<int>(lines.size()));
+                const int imgW = static_cast<int>(std::ceil(maxLineWidth)) + 4;
+                const int imgH = static_cast<int>(std::ceil(fm.lineSpacing() * lineCount)) + 4;
 
                 if (imgW <= 0 || imgH <= 0)
                     return;
@@ -877,7 +885,7 @@ namespace IPCore
                                           static_cast<int>(textColor.z * 255), static_cast<int>(textColor.w * 255)));
                     painter.setRenderHint(QPainter::TextAntialiasing, true);
                     // Draw at baseline. AlignLeft|AlignVCenter within the padded rect.
-                    painter.drawText(QRectF(0, 0, imgW, imgH), Qt::AlignLeft | Qt::AlignVCenter, qtext);
+                    painter.drawText(QRectF(0, 0, imgW, imgH), Qt::AlignLeft | Qt::AlignTop, qtext);
                 }
 
                 // ── Upload as GL texture (OpenGL 2.1 compatible) ───────────────
