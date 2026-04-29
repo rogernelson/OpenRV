@@ -1270,6 +1270,7 @@ class: AnnotateMinorMode : MinorMode
 
         undoRedoClearUpdate();
         redraw();
+        sendInternalEvent("annotate-shape-released");
     }
 
     method: backwardDeleteChar (void; Event event)
