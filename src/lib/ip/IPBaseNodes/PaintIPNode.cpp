@@ -71,7 +71,9 @@ namespace
             ghostOpacity = static_cast<float>(duration) / static_cast<float>(startFrame - frame) + minOpacity;
         }
 
-        return ghostOpacity;
+        // Clamp to [0, 1]: GL blend factors are clamped by hardware, but
+        // QPainter QColor alpha must stay in [0, 255] or it wraps to near-zero.
+        return std::min(1.0f, ghostOpacity);
     }
 
     // Loop over all commands and separate them in 3 containers:
@@ -372,43 +374,30 @@ namespace IPCore
             const auto* rawPts = static_cast<const Vec2f*>(pointsP->rawData());
             const size_t rawCount = pointsP->size();
 
-            // ── Initialise per-stroke state on the first point ────────────────
-            if (!p.inputSmoother)
+            if (isStampBrush)
             {
-                p.inputSmoother = std::make_unique<TwkPaint::SmoothInterpolate2D>();
-                p.rawPointsSmoothed = 0;
-                p.points.clear();
-                p.widths.clear();
-
-                if (isStampBrush)
+                // ── Stamp path: feed raw points through smoother → StampPlacer ─
+                if (!p.inputSmoother)
                 {
-                    // stampPlacer is created lazily on the first smoothed point
-                    // (below) because p.width may still be the default 0.01 here.
+                    p.inputSmoother = std::make_unique<TwkPaint::SmoothInterpolate2D>();
+                    p.rawPointsSmoothed = 0;
                     p.stampPlacer = nullptr;
                     p.stampInstances.clear();
                 }
-            }
 
-            // ── Feed only newly arrived raw points through the smoother ────────
-            // widthP may have fewer entries than pointsP during a live stroke.
-            const size_t widthsCount = hasPerPointWidths ? widthP->size() : 0;
+                const size_t widthsCount = hasPerPointWidths ? widthP->size() : 0;
 
-            for (size_t i = p.rawPointsSmoothed; i < rawCount; ++i)
-            {
-                p.inputSmoother->add_point(rawPts[i]);
-
-                // When widthP lags by one, clamp to the last available entry.
-                const size_t wi = (hasPerPointWidths && widthsCount > 0) ? std::min(i, widthsCount - 1) : static_cast<size_t>(-1);
-                const float w = (wi != static_cast<size_t>(-1)) ? static_cast<const float*>(widthP->rawData())[wi] : p.width;
-
-                TwkMath::Vec2f out;
-                while (p.inputSmoother->interpolate(out))
+                for (size_t i = p.rawPointsSmoothed; i < rawCount; ++i)
                 {
-                    if (isStampBrush)
+                    p.inputSmoother->add_point(rawPts[i]);
+
+                    const size_t wi = (hasPerPointWidths && widthsCount > 0) ? std::min(i, widthsCount - 1) : static_cast<size_t>(-1);
+                    const float w = (wi != static_cast<size_t>(-1)) ? static_cast<const float*>(widthP->rawData())[wi] : p.width;
+
+                    TwkMath::Vec2f out;
+                    while (p.inputSmoother->interpolate(out))
                     {
-                        // ── Stamp: drive placer, accumulate stamp instances ────
-                        // Create placer here (not at inputSmoother init) so p.width
-                        // is guaranteed to have the final per-stroke value.
+                        // Create placer lazily so p.width has its final value.
                         if (!p.stampPlacer)
                         {
                             TwkPaint::BrushParams params;
@@ -421,20 +410,26 @@ namespace IPCore
                         while (p.stampPlacer->next(s))
                             p.stampInstances.push_back(s);
                     }
-                    else
-                    {
-                        // ── Ribbon: accumulate smoothed geometry points ────────
-                        p.points.push_back(out);
-                        if (hasPerPointWidths)
-                            p.widths.push_back(w);
-                    }
                 }
-            }
 
-            p.rawPointsSmoothed = rawCount;
-            // For stamp brushes, npoints mirrors stampInstances.size() so PolyLine::hash()
-            // changes as stamps accumulate, invalidating the IPGraph render cache mid-stroke.
-            p.npoints = isStampBrush ? p.stampInstances.size() : p.points.size();
+                p.rawPointsSmoothed = rawCount;
+                // npoints mirrors stampInstances so hash() changes as stamps accumulate,
+                // invalidating the IPGraph render cache mid-stroke.
+                p.npoints = p.stampInstances.size();
+            }
+            else
+            {
+                // ── Ribbon path: assign raw points directly (matches main branch) ─
+                // The smoother densifies points ~6× which causes excessive opacity
+                // accumulation from overlapping quads when rendering ribbon brushes.
+                p.points.assign(rawPts, rawPts + rawCount);
+                p.npoints = rawCount;
+
+                if (widthP && widthP->size() == rawCount)
+                    p.widths.assign(static_cast<const float*>(widthP->rawData()), static_cast<const float*>(widthP->rawData()) + rawCount);
+                else
+                    p.widths.clear();
+            }
         }
         else
         {

@@ -421,7 +421,12 @@ namespace IPCore
 
                 auto sq = buildStampQuads(localPoly->stampInstances);
 
-                if (info.blendMode == BlendMarker)
+                // BlendMarker two-pass is also used in ghost mode for any stamp brush:
+                // GL_MAX accumulates at most ghost_opacity (never exceeds 1 after the
+                // getGhostOpacity clamp), and ONE_MINUS_DST_ALPHA composites the background
+                // correctly.  This prevents opacity accumulation from overlapping stamps,
+                // which would otherwise make dense brushes appear too opaque when ghosted.
+                if (info.blendMode == BlendMarker || isGhostOn)
                 {
                     // Two-pass isolation without extra FBO:
                     // Pass 1 — re-clear currentFBO to transparent, draw stamps with
@@ -802,7 +807,8 @@ namespace IPCore
 
             glEnable(GL_TEXTURE_2D);
             glEnable(GL_BLEND);
-            glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+            // Premultiplied-alpha blend: texture is ARGB32_Premultiplied.
+            glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
             glActiveTexture(GL_TEXTURE0);
         }
@@ -881,8 +887,9 @@ namespace IPCore
                 {
                     QPainter painter(&img);
                     painter.setFont(qfont);
-                    painter.setPen(QColor(static_cast<int>(textColor.x * 255), static_cast<int>(textColor.y * 255),
-                                          static_cast<int>(textColor.z * 255), static_cast<int>(textColor.w * 255)));
+                    auto toQColorComponent = [](float v) { return static_cast<int>(std::max(0.0f, std::min(1.0f, v)) * 255); };
+                    painter.setPen(QColor(toQColorComponent(textColor.x), toQColorComponent(textColor.y), toQColorComponent(textColor.z),
+                                          toQColorComponent(textColor.w)));
                     painter.setRenderHint(QPainter::TextAntialiasing, true);
                     // Draw at baseline. AlignLeft|AlignVCenter within the padded rect.
                     painter.drawText(QRectF(0, 0, imgW, imgH), Qt::AlignLeft | Qt::AlignTop, qtext);
@@ -936,8 +943,10 @@ namespace IPCore
                     qx,      qy + th, 0.0f, 0.0f, // TL
                 };
 
+                // Texture is Format_ARGB32_Premultiplied so use premul blend:
+                // GL_ONE (not GL_SRC_ALPHA) avoids squaring the alpha.
                 glEnable(GL_BLEND);
-                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+                glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
                 PrimitiveData databuffer(data, nullptr, GL_QUADS, 4, 1, sizeof(float) * 16);
                 std::vector<VertexAttribute> attrs;
@@ -1230,8 +1239,9 @@ namespace IPCore
             const auto* localCmd = dynamic_cast<const PaintIPNode::LocalCommand*>(this);
             const bool isGhost = localCmd && localCmd->ghostOn;
             const Color effectiveBorder = isGhost ? localCmd->ghostColor : borderColor;
-            const Color effectiveInner =
-                isGhost ? Color(localCmd->ghostColor.x, localCmd->ghostColor.y, localCmd->ghostColor.z, innerColor.w * 0.5f) : innerColor;
+            const Color effectiveInner = isGhost ? Color(localCmd->ghostColor.x, localCmd->ghostColor.y, localCmd->ghostColor.z,
+                                                         innerColor.w > 0.0f ? localCmd->ghostColor.w : 0.0f)
+                                                 : innerColor;
 
             // Bounding-box quad corners: BL BR TR TL
             float verts[8] = {min.x, min.y, max.x, min.y, max.x, max.y, min.x, max.y};
@@ -1277,8 +1287,9 @@ namespace IPCore
             const auto* localCmd = dynamic_cast<const PaintIPNode::LocalCommand*>(this);
             const bool isGhost = localCmd && localCmd->ghostOn;
             const Color effectiveBorder = isGhost ? localCmd->ghostColor : borderColor;
-            const Color effectiveInner =
-                isGhost ? Color(localCmd->ghostColor.x, localCmd->ghostColor.y, localCmd->ghostColor.z, innerColor.w * 0.5f) : innerColor;
+            const Color effectiveInner = isGhost ? Color(localCmd->ghostColor.x, localCmd->ghostColor.y, localCmd->ghostColor.z,
+                                                         innerColor.w > 0.0f ? localCmd->ghostColor.w : 0.0f)
+                                                 : innerColor;
 
             float verts[8] = {min.x, min.y, max.x, min.y, max.x, max.y, min.x, max.y};
 
@@ -1321,8 +1332,9 @@ namespace IPCore
             const auto* localCmd = dynamic_cast<const PaintIPNode::LocalCommand*>(this);
             const bool isGhost = localCmd && localCmd->ghostOn;
             const Color effectiveBorder = isGhost ? localCmd->ghostColor : borderColor;
-            const Color effectiveInner =
-                isGhost ? Color(localCmd->ghostColor.x, localCmd->ghostColor.y, localCmd->ghostColor.z, innerColor.w * 0.5f) : innerColor;
+            const Color effectiveInner = isGhost ? Color(localCmd->ghostColor.x, localCmd->ghostColor.y, localCmd->ghostColor.z,
+                                                         innerColor.w > 0.0f ? localCmd->ghostColor.w : 0.0f)
+                                                 : innerColor;
 
             // Bounding box: expand by thickness + borderWidth on all sides
             const float margin = thickness * 3.0f + borderWidth; // 3× = head half-width (2.5×) + AA
