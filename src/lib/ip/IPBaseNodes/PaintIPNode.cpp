@@ -60,16 +60,10 @@ namespace
         constexpr float minOpacity = 0.075;
         float ghostOpacity = 1.0;
 
-        if (frame > startFrame) // Command starts before the current frame
-                                // (ghostBefore)
-        {
+        if (frame > startFrame)
             ghostOpacity = static_cast<float>(duration) / static_cast<float>(frame - startFrame) + minOpacity;
-        }
-        if (frame < startFrame) // Command starts after the current frame
-                                // (ghostAfter)
-        {
+        else if (frame < startFrame)
             ghostOpacity = static_cast<float>(duration) / static_cast<float>(startFrame - frame) + minOpacity;
-        }
 
         // Clamp to [0, 1]: GL blend factors are clamped by hardware, but
         // QPainter QColor alpha must stay in [0, 255] or it wraps to near-zero.
