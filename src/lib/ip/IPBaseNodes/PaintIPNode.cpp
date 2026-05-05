@@ -413,7 +413,8 @@ namespace IPCore
             }
             else
             {
-                // ── Ribbon path: assign raw points directly (matches main branch) ─
+                // ── Ribbon path: assign raw points directly (input smoother was introduced
+                // (for stamp brushes, let's leave ribbon brushes as they were)
                 // The smoother densifies points ~6× which causes excessive opacity
                 // accumulation from overlapping quads when rendering ribbon brushes.
                 p.points.assign(rawPts, rawPts + rawCount);
