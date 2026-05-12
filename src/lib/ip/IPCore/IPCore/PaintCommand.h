@@ -85,7 +85,7 @@ namespace IPCore
         {
         public:
             explicit CommandContext(TwkMath::Mat44f pid, TwkMath::Mat44f m, const GLFBO* i, const GLFBO* t, const GLFBO* c, GLState*& g,
-                                    bool hasSten, TwkMath::Vec4f sten = TwkMath::Vec4f(0.0))
+                                    bool hasSten, TwkMath::Vec4f sten = TwkMath::Vec4f(0.0), int imgW = 0, int imgH = 0)
             {
                 hasStencil = hasSten;
                 stencilBox = sten;
@@ -95,6 +95,8 @@ namespace IPCore
                 currentTexture = t;
                 currentRender = c;
                 glState = g;
+                imageWidth = imgW;
+                imageHeight = imgH;
             }
 
             ~CommandContext() {}
@@ -108,6 +110,8 @@ namespace IPCore
             const GLFBO* currentTexture;
             const GLFBO* currentRender;
             GLState* glState;
+            int imageWidth;
+            int imageHeight;
         };
 
         class Command

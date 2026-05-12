@@ -845,6 +845,29 @@ namespace IPCore
                 const float fbW = currentFBO->width();
                 const float fbH = currentFBO->height();
 
+                // The FBO is screen-resolution (viewport pixels). pos.x/pos.y are
+                // in image/world space, so after the projection×modelview transform
+                // the text quad scales proportionally with how large the image
+                // appears on screen. The y-scale of that combined matrix tells us
+                // how many NDC units one image-space unit covers; multiplying by
+                // fbH/2 gives screen pixels per image-space unit.
+                //
+                // We must bake the QImage texture at exactly that pixel density so
+                // the texture fills the quad pixel-for-pixel. Without this, the
+                // quad will grows with the image display scale while the texture stays
+                // fixed and will change size according to the viewport size.
+                const TwkMath::Mat44f transform = context.projMatrix * context.modelviewMatrix;
+                const float proj_scale_x = std::max(std::abs(transform.m00), 0.001f);
+                const float proj_scale_y = std::max(std::abs(transform.m11), 0.001f);
+
+                // Render the font at the screen pixel size that corresponds to
+                // effectiveFontSize natural image pixels at the current display
+                // resolution. Dividing by imageHeight normalises the font size to
+                // a fraction of the image so text always occupies the same
+                // proportion of the image regardless of screen size or DPI.
+                const float imageH = (context.imageHeight > 0) ? static_cast<float>(context.imageHeight) : fbH;
+                const float renderFontSize = std::max(1.0f, effectiveFontSize * proj_scale_y * fbH / (2.0f * imageH));
+
                 // ── Build QFont ───────────────────────────────────────────────
                 QFont qfont;
                 const QStringList families = QFontDatabase::families();
@@ -853,7 +876,7 @@ namespace IPCore
                 {
                     qfont.setFamily(qfamily);
                 }
-                qfont.setPixelSize(static_cast<int>(effectiveFontSize));
+                qfont.setPixelSize(static_cast<int>(renderFontSize));
                 qfont.setWeight(effectiveFontWeight == PaintIPNode::FontWeight::Bold ? QFont::Bold : QFont::Normal);
                 qfont.setStyle(effectiveFontStyle == PaintIPNode::FontStyle::Italic ? QFont::StyleItalic : QFont::StyleNormal);
                 qfont.setUnderline(effectiveTextDecor == PaintIPNode::TextDecoration::Underline);
@@ -862,7 +885,8 @@ namespace IPCore
                 const QString qtext = QString::fromStdString(text);
                 if (qtext.isEmpty())
                     return;
-                QFontMetricsF fm(qfont);
+                QImage refImg(1, 1, QImage::Format_ARGB32_Premultiplied);
+                QFontMetricsF fm(qfont, &refImg);
                 // For multi-line text, measure each line separately: take the
                 // max advance width and accumulate lineSpacing() per line so
                 // the image is tall enough for all lines.
@@ -923,17 +947,18 @@ namespace IPCore
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, texId);
 
-                // The quad spans from pos to pos + (imgW, imgH) in world space.
+                // The quad spans from pos to pos + (tw, th) in image/world space.
                 // Texture origin is bottom-left in GL, image origin top-left in Qt
                 // so we flip the T coordinate.
+                //
+                // tw/th convert texture pixels → image-space units. Dividing by
+                // (proj_scale × fbDim) cancels the projection scale so the
+                // on-screen quad is exactly imgW×imgH screen pixels — matching
+                // the texture resolution and ensuring crisp text at any display size.
                 const float qx = pos.x;
                 const float qy = pos.y;
-                // FontSize is in pixels and the world-space size is
-                // derived from the FBO pixel dimensions.
-                const float wScale = (fbW > 0) ? (1.0f / fbW) : 0.001f;
-                const float hScale = (fbH > 0) ? (1.0f / fbH) : 0.001f;
-                const float tw = imgW * wScale * 2.0f; // *2 because world coords span [-1,1]
-                const float th = imgH * hScale * 2.0f;
+                const float tw = (fbW > 0) ? imgW * 2.0f / (proj_scale_x * fbW) : 0.001f;
+                const float th = (fbH > 0) ? imgH * 2.0f / (proj_scale_y * fbH) : 0.001f;
 
                 // Vertices: (x,y, u,v) quads — position + texcoord
                 float data[] = {
@@ -1467,14 +1492,14 @@ namespace IPCore
                 TWK_GLDEBUG;
 
                 // draw
-                const Mat44f& O = root->orientationMatrix;
+                const Mat44f& O = root->orientationMatrix;:w
                 const Mat44f& MP = root->placementMatrix;
                 const Mat44f I = (O * MP).inverted();
                 const Mat44f model = root->imageMatrix;
                 const Mat44f proj = root->projectionMatrix;
 
                 CommandContext commandContext(proj, model, fbo, textureFBO, currentFBO, context.glState, context.hasStencil,
-                                              context.stencilBox);
+                                              context.stencilBox, root->width, root->height);
 
                 //
                 // to speed up the rendering, we execute all consecutive text
