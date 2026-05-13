@@ -111,11 +111,18 @@ namespace TwkGLF
         v = glCreateShader(GL_VERTEX_SHADER);
         f = glCreateShader(GL_FRAGMENT_SHADER);
 
-        const char* versionHeader = basicGLVersionHeader();
+        // Skip injecting #version if the shader already provides one.
+        // ap_compat_gl21.glsl contains "#version 120"; injecting a second
+        // #version directive before it is rejected by strict drivers on
+        // Windows/Linux while Mac silently ignores it.
+        const bool vertOwnsVersion = m_vertexCode.find("#version") != std::string::npos;
+        const bool fragOwnsVersion = m_fragmentCode.find("#version") != std::string::npos;
+        const char* versionHeader     = vertOwnsVersion ? "" : basicGLVersionHeader();
+        const char* fragVersionHeader = fragOwnsVersion ? "" : basicGLVersionHeader();
         const char* vsrc[2] = {versionHeader, m_vertexCode.c_str()};
         glShaderSource(v, 2, vsrc, NULL);
         glCompileShader(v);
-        const char* fsrc[2] = {versionHeader, m_fragmentCode.c_str()};
+        const char* fsrc[2] = {fragVersionHeader, m_fragmentCode.c_str()};
         glShaderSource(f, 2, fsrc, NULL);
         glCompileShader(f);
 
