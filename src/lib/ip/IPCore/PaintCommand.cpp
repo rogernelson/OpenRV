@@ -1492,7 +1492,7 @@ namespace IPCore
                 TWK_GLDEBUG;
 
                 // draw
-                const Mat44f& O = root->orientationMatrix;:w
+                const Mat44f& O = root->orientationMatrix;
                 const Mat44f& MP = root->placementMatrix;
                 const Mat44f I = (O * MP).inverted();
                 const Mat44f model = root->imageMatrix;
