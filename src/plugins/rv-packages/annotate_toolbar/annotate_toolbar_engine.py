@@ -243,8 +243,11 @@ class AnnotateDrawEngine:
     def _pointer_location(self, event):
         """Return (image_name, _Vec2) in image space, or ("", None).
 
-        imagesAtPixel in Python ignores the "annotate" tag (always returns []).
-        Use the untagged call and take the first "inside" entry.
+        imagesAtPixel returns nodes outermost→innermost without the "annotate" tag:
+          [displayGroup0_colorPipeline_0, defaultSequence_sequence, sourceGroup_source]
+        The first entry (display pipeline) has a zoom-dependent transform that diverges
+        from PaintIPNode's source-image coordinate space after zoom/pan.
+        Use the LAST "inside" entry (source node) whose space matches PaintIPNode.
         eventToImageSpace takes the DPR-scaled pointer.
         Wrap the result in _Vec2 so callers can use .x/.y.
         """
@@ -257,7 +260,14 @@ class AnnotateDrawEngine:
             if not pinfos:
                 return "", None
 
-            info = next((p for p in pinfos if p.get("inside")), pinfos[0])
+            # Always use the last (deepest/source) entry regardless of inside status.
+            # imagesAtPixel orders outermost→innermost: [displayPipeline, sequence, source].
+            # The display node is always "inside" but its coordinate space differs from
+            # PaintIPNode's source-image space, causing misplacement after zoom/pan or
+            # when drawing in the black border outside the image.
+            # The source node gives correct coordinates both inside the image and as
+            # extrapolated values outside it, consistent with PaintIPNode's render space.
+            info = pinfos[-1]
             name = info["name"]
 
             pei_raw = commands.eventToImageSpace(name, ip, True)
