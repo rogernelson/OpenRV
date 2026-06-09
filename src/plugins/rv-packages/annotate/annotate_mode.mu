@@ -104,9 +104,6 @@ class: AnnotateMinorMode : MinorMode
     DrawMode          _burnDrawMode;
     DrawMode          _cloneDrawMode;
     DrawMode          _smudgeDrawMode;
-    DrawMode          _markerDrawMode;
-    DrawMode          _airBrushStampDrawMode;
-    DrawMode          _glowDrawMode;
     string            _currentDrawObject;
     string            _drawModeTable;
     string            _disabledTooltipMessage;
@@ -137,9 +134,6 @@ class: AnnotateMinorMode : MinorMode
     QToolButton       _softEraseButton;
     QToolButton       _dodgeButton;
     QToolButton       _burnButton;
-    QToolButton       _cloneButton;
-    QToolButton       _smudgeButton;
-    QToolButton       _glowButton;
     QToolButton       _rectButton;
     QToolButton       _ellipseButton;
     QToolButton       _arrowButton;
@@ -3211,9 +3205,6 @@ class: AnnotateMinorMode : MinorMode
             _softEraseButton   = _drawPane.findChild("softEraseButton");
             _dodgeButton       = _drawPane.findChild("dodgeButton");
             _burnButton        = _drawPane.findChild("burnButton");
-            _cloneButton       = _drawPane.findChild("cloneButton");
-            _smudgeButton      = _drawPane.findChild("smudgeButton");
-            _glowButton        = _drawPane.findChild("glowButton");
             _rectButton        = _drawPane.findChild("rectButton");
             _ellipseButton     = _drawPane.findChild("ellipseButton");
             _arrowButton       = _drawPane.findChild("arrowButton");
@@ -3230,8 +3221,6 @@ class: AnnotateMinorMode : MinorMode
         {
             print("ERROR: ui file exception: %s\n" % exc);
         }
-
-        // smudgeButton / cloneButton repurposed for stamp brush testing
 
         QGroupBox cbase    = _drawPane.findChild("colorGroup");
 
@@ -3449,75 +3438,6 @@ class: AnnotateMinorMode : MinorMode
                                         "annotate_burn_category",
                                         "Burn" };
 
-        _markerDrawMode = DrawMode { "Marker",
-                                      "marker",
-                                      _smudgeButton,
-                                      g.addAction(auxIcon("smudge_64x64.png"), "Marker"),
-                                      "",
-                                      Qt.CrossCursor,
-                                      0.015,
-                                      Color(1, 0, 0, 1),
-                                      RenderOverMode,
-                                      "marker",
-                                      RoundJoin,
-                                      SquareCap,
-                                      0.044, 0.001,
-                                      1,
-                                      1,
-                                      defaultPMode,
-                                      nil,
-                                      nil,
-                                      nil,
-                                      nil,
-                                      "annotate_marker_category",
-                                      "Marker (Stamp)" };
-
-        _airBrushStampDrawMode = DrawMode { "Airbrush Stamp",
-                                             "airbrushstamp",
-                                             _cloneButton,
-                                             g.addAction(auxIcon("clone_64x64.png"), "Airbrush Stamp"),
-                                             "",
-                                             Qt.CrossCursor,
-                                             0.025,
-                                             Color(0, 0.5, 1, 0.5),
-                                             RenderOverMode,
-                                             "airbrush",
-                                             RoundJoin,
-                                             SquareCap,
-                                             0.044, 0.001,
-                                             1,
-                                             1,
-                                             defaultPMode,
-                                             nil,
-                                             nil,
-                                             nil,
-                                             nil,
-                                             "annotate_airbrushstamp_category",
-                                             "Airbrush Stamp" };
-
-        _glowDrawMode = DrawMode { "Glow",
-                                   "glow",
-                                   _glowButton,
-                                   g.addAction(auxIcon("dodge_64x64.png"), "Glow"),
-                                   "",
-                                   Qt.CrossCursor,
-                                   0.025,
-                                   Color(1, 0.6, 0, 0.7),
-                                   RenderOverMode,
-                                   "glow",
-                                   RoundJoin,
-                                   SquareCap,
-                                   0.044, 0.001,
-                                   1,
-                                   1,
-                                   defaultPMode,
-                                   nil,
-                                   nil,
-                                   nil,
-                                   nil,
-                                   "annotate_glow_category",
-                                   "Glow (Additive Stamp)" };
-
         // ── Shape draw modes ─────────────────────────────────────────────
         // The buttons are set to _disabledButton as a placeholder — a future UI
         // pass will add dedicated toolbar buttons and update drawpane.ui.
@@ -3604,7 +3524,6 @@ class: AnnotateMinorMode : MinorMode
         _drawModes = DrawMode[] { _selectDrawMode, _penDrawMode, _airBrushDrawMode,
                                   _textDrawMode, _dropperDrawMode, _hardEraseDrawMode,
                                   _softEraseDrawMode, _dodgeDrawMode, _burnDrawMode,
-                                  _markerDrawMode, _airBrushStampDrawMode, _glowDrawMode,
                                   _rectDrawMode, _ellipseDrawMode, _arrowDrawMode,
                                   _lineDrawMode };
 
