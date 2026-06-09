@@ -405,7 +405,7 @@ namespace IPCore
 
         // ── Shape commands ───────────────────────────────────────────
         // Rendered via bounding-box quad + SDF GLSL shaders loaded from
-        // annotation-platform deps/twkpaint/shaders/.
+        // the twkpaint-src submodule (assets/shaders/).
 
         /// Axis-aligned rectangle (OTIO Rectangle.1).
         class ShapeRect : public Command

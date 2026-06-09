@@ -193,7 +193,7 @@ class: AnnotateMinorMode : MinorMode
 
     // ── Shape drawing state ──────────────────────────────────────────────
     // Shape draw modes (rect, ellipse, arrow, line).  Buttons are set to
-    // _disabledButton as a placeholder — the Phase 7 UI pass will wire them to
+    // _disabledButton as a placeholder — a future UI pass will wire them to
     // dedicated toolbar buttons and update drawpane.ui.
     DrawMode          _rectDrawMode;
     DrawMode          _ellipseDrawMode;
@@ -3519,8 +3519,8 @@ class: AnnotateMinorMode : MinorMode
                                    "Glow (Additive Stamp)" };
 
         // ── Shape draw modes ─────────────────────────────────────────────
-        // The buttons are set to _disabledButton as a placeholder — Phase 7 UI
-        // work will add dedicated toolbar buttons and update drawpane.ui.
+        // The buttons are set to _disabledButton as a placeholder — a future UI
+        // pass will add dedicated toolbar buttons and update drawpane.ui.
         // The brushName field is repurposed to carry the shape type string so
         // the generic shapePush/shapeDrag/shapeRelease handlers know which
         // component prefix to use.

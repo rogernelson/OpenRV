@@ -9,7 +9,7 @@
 OTIO schemadef for a text annotation shape.
 
 Font properties are discrete fields so each platform constructs its own
-representation (CSS for CR, QFont for RV) without string parsing.
+representation (CSS for web clients, QFont for RV) without string parsing.
 anchor is the baseline start point, consistent with min/max/start_position
 on other shape types.
 
