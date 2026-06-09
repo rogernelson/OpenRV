@@ -21,7 +21,7 @@ extern const char* ReplaceColoredVertex_glsl;
 extern const char* ReplaceVertex_glsl;
 extern const char* ReplaceFrag_glsl;
 
-// Stamp brush shaders embedded from annotation-platform/deps/twkpaint/shaders/.
+// Stamp brush shaders embedded from OpenRV-annotation/assets/shaders/.
 // compat_gl21.glsl is prepended at program-build time
 extern const char* ap_compat_gl21;
 extern const char* ap_stamp_vert;
@@ -117,7 +117,7 @@ namespace TwkGLF
         // Windows/Linux while Mac silently ignores it.
         const bool vertOwnsVersion = m_vertexCode.find("#version") != std::string::npos;
         const bool fragOwnsVersion = m_fragmentCode.find("#version") != std::string::npos;
-        const char* versionHeader     = vertOwnsVersion ? "" : basicGLVersionHeader();
+        const char* versionHeader = vertOwnsVersion ? "" : basicGLVersionHeader();
         const char* fragVersionHeader = fragOwnsVersion ? "" : basicGLVersionHeader();
         const char* vsrc[2] = {versionHeader, m_vertexCode.c_str()};
         glShaderSource(v, 2, vsrc, NULL);

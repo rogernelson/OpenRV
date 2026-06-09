@@ -197,10 +197,9 @@ QUOTE_FILES(_cooked_shaders INPUT_LIST ${_shaders} SUFFIX "glsl")
 LIST(APPEND _sources ${_cooked_shaders})
 
 # Embed SDF shape shaders directly into the binary. quote_file uses ADD_CUSTOM_COMMAND so the generated .cpp is rebuilt automatically whenever a shader source
-# file changes. Shaders are sourced from the annotation-platform submodule's twkpaint dependency so we share the same SDF shaders as all app using the same
-# version of the annotation-platform
+# file changes. Shaders are sourced from the OpenRV-annotation submodule so we share the same SDF shaders across all annotation-enabled apps.
 SET(_sdf_shader_dir
-    "../annotation-platform/deps/twkpaint/shaders"
+    "../../geometry/twkpaint-src/assets/shaders"
 )
 QUOTE_FILE(_sdf_compat INPUT_FILENAME ${_sdf_shader_dir}/compat_gl21.glsl CPP_SYMBOL shape_compat_gl21)
 QUOTE_FILE(_sdf_common INPUT_FILENAME ${_sdf_shader_dir}/shape_common.glsl CPP_SYMBOL shape_common)
@@ -307,10 +306,10 @@ ENDIF()
 
 RV_STAGE(TYPE "LIBRARY" TARGET ${_target})
 
-# Stage brush tip assets from the annotation-platform submodule so that BrushTextureManager can find them at Bundle::top()/assets/brushes at runtime. On macOS,
+# Stage brush tip assets from the OpenRV-annotation submodule so that BrushTextureManager can find them at Bundle::top()/assets/brushes at runtime. On macOS,
 # Bundle::top() returns RV.app/ (one level above Contents/), so the assets must land at RV.app/assets/brushes rather than RV.app/Contents/assets/brushes.
 SET(_brush_assets_src
-    ${CMAKE_CURRENT_SOURCE_DIR}/../annotation-platform/assets/brushes
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../geometry/twkpaint-src/assets/brushes
 )
 IF(RV_TARGET_DARWIN)
   SET(_brush_stage_dir
